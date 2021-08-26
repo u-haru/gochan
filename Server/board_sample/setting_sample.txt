@@ -1,0 +1,4 @@
+BBS_TITLE=В†В†В†В†В†
+BBS_NONAME_NAME=ЦЉЦ≥ВµВ≥Вс
+BBS_DELETE_NAME=В†ВЏБ[Вс
+BBS_MAX_RES=1000
