@@ -26,10 +26,13 @@ type Server struct {
 type Board struct {
 	Title    string
 	Threads  map[string]*Thread
-	Settings map[string]string
-	Subject  string
-	MaxRes   uint
-	NoName   string
+	Settings struct {
+		Raw    map[string]string
+		MaxRes uint
+		MaxLen int
+		NoName string
+	}
+	Subject string
 	// Index    *template.Template
 }
 type Thread struct {
@@ -57,20 +60,19 @@ func New(dir string) *Server {
 		dat.WriteString(toSJIS(sv.Boards[board].Subject))
 		dat.Close()
 
-		Setting := sv.readsetting(board) //設定
+		sv.Boards[board].Settings.Raw = sv.readsetting(board) //設定
 
-		sv.Boards[board].Settings = Setting
-		if _, ok := Setting["BBS_NONAME_NAME"]; !ok {
-			sv.Boards[board].NoName = "名無し"
+		if _, ok := sv.Boards[board].Settings.Raw["BBS_NONAME_NAME"]; !ok {
+			sv.Boards[board].Settings.NoName = "名無し"
 		} else {
-			sv.Boards[board].NoName = Setting["BBS_NONAME_NAME"]
+			sv.Boards[board].Settings.NoName = sv.Boards[board].Settings.Raw["BBS_NONAME_NAME"]
 		}
 
-		if _, ok := Setting["BBS_MAX_RES"]; !ok {
-			sv.Boards[board].MaxRes = 1000
+		if _, ok := sv.Boards[board].Settings.Raw["BBS_MAX_RES"]; !ok {
+			sv.Boards[board].Settings.MaxRes = 1000
 		} else {
-			val, _ := strconv.Atoi(Setting["BBS_MAX_RES"])
-			sv.Boards[board].MaxRes = uint(val)
+			val, _ := strconv.Atoi(sv.Boards[board].Settings.Raw["BBS_MAX_RES"])
+			sv.Boards[board].Settings.MaxRes = uint(val)
 		}
 
 		if !sv.Config.NoRam {

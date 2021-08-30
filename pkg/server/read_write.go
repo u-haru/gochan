@@ -60,7 +60,11 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 		if from == "" {
-			from = board.NoName
+			from = board.Settings.NoName
+		}
+		if len(message) > board.Settings.MaxLen {
+			dispError(w, "本文が長すぎます!")
+			return
 		}
 
 		message = escape.Replace(message) //メッセージをエスケープ
@@ -80,16 +84,16 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			defer dat.Close()
 			bytes, _ := ioutil.ReadAll(dat)
 			kakikominum = uint(strings.Count(toUTF(string(bytes)), "\n"))
-			if kakikominum >= board.MaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.MaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+			if kakikominum >= board.Settings.MaxRes {
+				dispError(w, "このスレッドは"+fmt.Sprint(board.Settings.MaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 				return
 			} else {
 				dat.WriteString(toSJIS(outdat))
 				kakikominum++
 			}
 		} else {
-			if board.Threads[key].Num >= board.MaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.MaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+			if board.Threads[key].Num >= board.Settings.MaxRes {
+				dispError(w, "このスレッドは"+fmt.Sprint(board.Settings.MaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 				return
 			} else {
 				board.Threads[key].Lock.Lock()
