@@ -108,7 +108,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		w.Write([]byte(toSJIS(`<html>
 		<head>
 		<title>書きこみました。</title>
-		<meta http-equiv="refresh" content="1;URL=` + "/" + bbs + "/" + `">
+		<meta http-equiv="refresh" content="1;URL=` + "/" + bbs + "/?key=" + key + `">
 		</head>
 		<body>書きこみが終わりました。<br>
 		画面を切り替えるまでしばらくお待ち下さい。
