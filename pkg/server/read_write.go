@@ -230,7 +230,12 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 		return
 	}
 	bbs := strs[0]
-	key := strs[2][:strings.LastIndex(strs[2], ".dat")]
+	dotpos := strings.LastIndex(strs[2], ".dat")
+	if dotpos < 0 {
+		dispError(w, "keyが不正です!")
+		return
+	}
+	key := strs[2][:dotpos]
 
 	if val, ok := sv.Boards[bbs]; ok {
 		if val, ok := val.Threads[key]; ok {
