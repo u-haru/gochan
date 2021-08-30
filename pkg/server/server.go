@@ -29,7 +29,7 @@ type Board struct {
 	Settings struct {
 		Raw    map[string]string
 		MaxRes uint
-		MaxLen int
+		MaxLen uint
 		NoName string
 	}
 	Subject string
@@ -73,6 +73,13 @@ func New(dir string) *Server {
 		} else {
 			val, _ := strconv.Atoi(sv.Boards[board].Settings.Raw["BBS_MAX_RES"])
 			sv.Boards[board].Settings.MaxRes = uint(val)
+		}
+
+		if _, ok := sv.Boards[board].Settings.Raw["BBS_MESSAGE_MAXLEN"]; !ok {
+			sv.Boards[board].Settings.MaxLen = 1000
+		} else {
+			val, _ := strconv.Atoi(sv.Boards[board].Settings.Raw["BBS_MESSAGE_MAXLEN"])
+			sv.Boards[board].Settings.MaxLen = uint(val)
 		}
 
 		if !sv.Config.NoRam {

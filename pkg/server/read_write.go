@@ -62,7 +62,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		if from == "" {
 			from = board.Settings.NoName
 		}
-		if len(message) > board.Settings.MaxLen {
+		if uint(len(message)) > board.Settings.MaxLen {
 			dispError(w, "本文が長すぎます!")
 			return
 		}
