@@ -200,7 +200,8 @@ func (sv *Server) refresh_subjects(bbs string, key string, subject string, kakik
 }
 
 func (sv *Server) createid(w http.ResponseWriter, remote string) string {
-	ip := strings.Split(remote, ":")[0]
+	now := time.Now()
+	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
 	h := md5.New()
 	io.WriteString(h, ip) //ip to md5
 
