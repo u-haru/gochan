@@ -222,12 +222,11 @@ func (sv *Server) createid(w http.ResponseWriter, remote string) string {
 }
 
 func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
-	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	strs := strings.Split(path, "/")
 	if len(strs) < 3 {
-		fmt.Fprint(w, "Bad Request")
+		dispError(w, "Bad Request!")
 		return
 	}
 	bbs := strs[0]
@@ -240,16 +239,17 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 
 	if val, ok := sv.Boards[bbs]; ok {
 		if val, ok := val.Threads[key]; ok {
+			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 			fmt.Fprint(w, toSJIS(val.Dat))
 		}
 	}
 }
 
 func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
-	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	bbs := strings.Split(path, "/")[0]
+	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	stream_toSJIS(bytes.NewReader([]byte(sv.Boards[bbs].Subject)), w)
 }
 func (sv *Server) plaintxt(w http.ResponseWriter, r *http.Request) { //subject.txt
