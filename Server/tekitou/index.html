@@ -1,0 +1,217 @@
+<html>
+
+<head>
+    <title>適当な板</title>
+</head>
+
+<body>
+    <noscript>
+        この掲示板はJavascriptを使用しています<br>
+        専用ブラウザの使用を推奨しています<br>
+    </noscript>
+    <div class="list">
+        <div class="box head" id="thread_catalog">
+            <div class="common">この板の主なスレッド</div>
+            <div class="thread_menu" id="thread_menu">
+            </div>
+        </div>
+    </div>
+    <div class="list" id="thread_list">
+    </div>
+    <div class="list">
+        <div class="box foot" id="writing_area">
+            
+        </div>
+        <a href="./"><b>ホーム</b></a>
+    </div>
+</body>
+<script>
+    function getdat(dat,toppage) {
+        let xhr = new XMLHttpRequest();
+        let list = document.getElementById("thread_list")
+
+        let key = dat.toString().split(".")[0]
+        xhr.open('GET', "./dat/" + dat);
+        xhr.onload = function () {
+            let datas = xhr.responseText.split("\n")
+            let thread = { "title": "", "res": [] }
+            datas.forEach(data => {
+                if (data != "") {
+                    let tmp = data.split("<>")
+                    tmp[3] = tmp[3].replace(/&gt;&gt;([0-9]+)(?![-\d])/i, `<a href="#${key}_$1">&gt;&gt;$1</a>`)
+                    tmp[3] = tmp[3].replace(/&gt;&gt;([0-9]+)\-([0-9]+)/i, `<a href="#${key}_$1">&gt;&gt;$1</a>-<a href="#${key}_$2">&gt;&gt;$2</a>`)
+                    thread.res.push({ "from": tmp[0], "mail": tmp[1], "date_id": tmp[2], "message": tmp[3] })
+                    if (tmp[4]) {
+                        thread.title = tmp[4]
+                    }
+                }
+            });
+            let addres = (res, i) => {
+                let dl = `<dt class="header" id="${key}_${i}">${i}<span class="name">${res.from}</span>${res.mail ? `<span class="mail">${res.mail}</span>` : ""}${res.date_id}</dt>`
+                dl += `<dd class="res">${res.message}</dd>`
+                return dl
+            }
+
+            let dl = `<dl class="box thread" id="${key}">`
+            dl += `<dt class="title">${thread.title}</dt>`
+            if (thread.res.length > 10 && toppage) {
+                dl += addres(thread.res[0], 1)
+                thread.res.slice(-9).forEach((res, i) => {
+                    dl += addres(res, thread.res.length - 8 + i)
+                })
+            } else {
+                thread.res.forEach((res, i) => {
+                    dl += addres(res, i + 1)
+                })
+            }
+            if(toppage){
+                dl += "<hr>"
+                dl += postarea(key)
+            }
+            list.insertAdjacentHTML('beforeend', dl);
+        };
+        xhr.send();
+    }
+    function postarea(key){
+        const bbs = location.pathname.split("/")[1]
+        return `<div class="common">${key?"書き込み欄":"新規スレッド作成"}</div>
+            <div style="margin: 0.5em 0 0 2em; font-size: 0.75em;">
+                <form method="POST" action="/test/bbs.cgi">
+                    <input type="submit" value="${key?"書き込み":"新規スレッド"}" name="submit"><br>
+                    ${!key?`スレッドタイトル：<input type="text" name="subject" style="width: 24em;"><br>`:""}
+                    名前：<input type="text" name="FROM" style="width: 16em;"> E-mail：<input type="text" name="mail"
+                        style="width: 16em;"><br>
+                    <textarea style="min-width: 40em; height: 10.0em; word-wrap: break-word;" rows="4" cols="12"
+                        name="MESSAGE"></textarea>
+                    <input type="hidden" name="bbs" value="${bbs}">
+                    ${key?`<input type="hidden" name="key" value="${key}">`:""}
+                </form>
+            </div>`
+    }
+    window.onload = () => {
+        let searchParams = new URLSearchParams(window.location.search);
+        let bbs = location.pathname.split("/")[1]
+
+        if (searchParams.has("key")) {
+            let key = searchParams.get("key")
+            getdat(searchParams.get("key") + ".dat")
+            document.getElementById("thread_catalog").classList.add("disabled")
+            document.getElementById("writing_area").insertAdjacentHTML('beforeend', postarea(key))
+        } else {
+            document.getElementById("writing_area").insertAdjacentHTML('beforeend', postarea())
+            let xhr = new XMLHttpRequest();
+            let menu = document.getElementById("thread_menu")
+            xhr.open('GET', './subject.txt');
+            xhr.send();
+            xhr.onload = function () {
+                let datas = xhr.responseText.split("\n")
+                let threads = []
+                datas.forEach((data, i) => {
+                    if (data != "") {
+                        let tmp = data.split("<>")
+                        let dat = tmp[0]
+                        getdat(dat,true)
+                        let key = dat.split('.')[0]
+                        menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?key=${key}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
+                    }
+                });
+            };
+        }
+    }
+</script>
+<style>
+    body {
+        background-image: url("./ba.gif");
+        margin: 0;
+        padding-bottom: 10%;
+    }
+
+    .list {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 95%;
+        margin: 0 auto;
+    }
+
+    .thread {
+        background-color: #EFEFEF;
+    }
+
+    .head {
+        background: #CFC;
+    }
+
+    .foot {
+        background: #CFC;
+    }
+
+    .box {
+        width: 100%;
+        margin: 0.5em 0;
+        padding: 0.5em;
+        border-radius: 0.5em / 0.5em;
+        border: 1px solid #000;
+        box-sizing: border-box;
+    }
+
+    .thread_menu {
+        margin: 0.5em 0;
+        border-top: 0.5em solid #BEB;
+        padding-left: 0.5em;
+        border-bottom: 0.5em solid #BEB;
+        border-radius: 0.5em / 0.5em;
+        height: 15em;
+        overflow-y: scroll;
+        background: #BEB;
+    }
+
+    .thread_menu_content {
+        margin: 0;
+        padding: 0;
+        font-size: 0.75em;
+    }
+
+    .title {
+        font-size: 1.5em;
+        color: red;
+        margin-bottom: 0.7em;
+    }
+
+    .name {
+        color: green;
+        font-weight: bold;
+        margin-right: 0.5em;
+        margin-left: 0.5em;
+    }
+
+    .mail {
+        margin-right: 0.5em;
+    }
+
+    .header {
+        margin: 0;
+        padding: 0;
+        font-size: 1.00em;
+    }
+
+    .res {
+        margin-bottom: 1em;
+        margin-inline-start: 1em;
+    }
+
+    .common {
+        padding: 0.5em;
+        border-radius: 0.50em / 0.50em;
+        background: #39F;
+        color: #FFF;
+        font-size: 1.00em;
+        display: inline-block;
+    }
+
+    .disabled{
+        display: none;
+    }
+</style>
+
+</html>
