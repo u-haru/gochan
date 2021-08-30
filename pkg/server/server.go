@@ -99,14 +99,11 @@ func (sv *Server) Start() {
 	httpserver := http.NewServeMux()
 	httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
 	for i := range sv.Boards {
-		httpserver.HandleFunc("/", sv.plaintxt)
-		httpserver.HandleFunc("/"+i+"/", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-			// params := map[string]interface{}{
-			// 	"Title": toSJIS(sv.Boards[i].Settings["BBS_TITLE"]),
-			// }
-			// sv.Boards[i].Index.Execute(w, params)
-			http.ServeFile(w, r, sv.Dir+"/"+i+"/index.html")
+		httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasSuffix(r.URL.Path, "/") {
+				w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
+			}
+			http.ServeFile(w, r, sv.Dir+r.URL.Path)
 		})
 		if !sv.Config.NoRam {
 			httpserver.HandleFunc("/"+i+"/dat/", sv.dat)
