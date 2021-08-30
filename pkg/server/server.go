@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Server struct {
@@ -168,12 +170,21 @@ func exists(name string) bool {
 func (sv *Server) Saver() {
 	for bbs, b := range sv.Boards {
 		for key, t := range b.Threads {
-			dat, err := os.Create(filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat"))
+			path := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+			dat, err := os.Create(path)
 			if err != nil {
 				log.Println(err)
 			}
 			dat.WriteString(toSJIS(t.Dat))
 			dat.Close()
+
+			kakikomis := strings.Split(t.Dat, "\n")
+			lastkakikomidate := strings.Split(kakikomis[len(kakikomis)-2], "<>")[2] //-2なのは最後が空行で終わるから
+			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
+			lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
+			ti, _ := time.Parse("2006-01-02 15:04:05.00", lastkakikomidate)
+
+			os.Chtimes(path, ti, ti)
 		}
 		dat, err := os.Create(filepath.Clean(sv.Dir + "/" + bbs + "/subject.txt"))
 		if err != nil {
@@ -191,6 +202,7 @@ func (sv *Server) getsubjects(bbs string) string {
 		panic(err)
 	}
 
+	sort.Slice(files, func(i, j int) bool { return files[i].ModTime().After(files[j].ModTime()) }) //日付順
 	subjects := ""
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".dat") {
