@@ -66,6 +66,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			dispError(w, "本文が長すぎます!")
 			return
 		}
+		if message == "" {
+			dispError(w, "本文が空です!")
+			return
+		}
 
 		message = escape.Replace(message) //メッセージをエスケープ
 
