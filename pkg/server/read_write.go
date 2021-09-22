@@ -43,6 +43,14 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	} else {
 		if subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", now.Unix())
+			if uint(len(subject)) > board.Settings.SubjectMaxLen {
+				dispError(w, "タイトルが長すぎます!")
+				return
+			}
+			if _, ok := board.Threads[key]; ok { //すでに同じキーのスレがあったら
+				dispError(w, "keyが不正です!")
+				return
+			}
 			if !sv.Config.NoRam {
 				board.Threads[key] = &Thread{}
 			}
@@ -71,13 +79,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			return
 		}
 
-		message = escape.Replace(message) //メッセージをエスケープ
-
-		datpath := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat") //datのパス
-
+		message = escape.Replace(message)                                                                                                        //メッセージをエスケープ
+		datpath := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")                                                                   //datのパス
 		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " " + sv.createid(w, r.RemoteAddr) //2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
-
-		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n" //吐き出すDat
+		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                                   //吐き出すDat
 
 		var kakikominum uint
 		if sv.Config.NoRam { //RAMにデータを展開していない場合
