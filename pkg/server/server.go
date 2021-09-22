@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -29,10 +28,11 @@ type Board struct {
 	Title    string
 	Threads  map[string]*Thread
 	Settings struct {
-		Raw    map[string]string
-		MaxRes uint
-		MaxLen uint
-		NoName string
+		Raw           map[string]string
+		ThreadMaxRes  uint
+		MessageMaxLen uint
+		SubjectMaxLen uint
+		NoName        string
 	}
 	Subject string
 	// Index    *template.Template
@@ -62,27 +62,7 @@ func New(dir string) *Server {
 		dat.WriteString(toSJIS(sv.Boards[board].Subject))
 		dat.Close()
 
-		sv.Boards[board].Settings.Raw = sv.readsetting(board) //設定
-
-		if _, ok := sv.Boards[board].Settings.Raw["BBS_NONAME_NAME"]; !ok {
-			sv.Boards[board].Settings.NoName = "名無し"
-		} else {
-			sv.Boards[board].Settings.NoName = sv.Boards[board].Settings.Raw["BBS_NONAME_NAME"]
-		}
-
-		if _, ok := sv.Boards[board].Settings.Raw["BBS_MAX_RES"]; !ok {
-			sv.Boards[board].Settings.MaxRes = 1000
-		} else {
-			val, _ := strconv.Atoi(sv.Boards[board].Settings.Raw["BBS_MAX_RES"])
-			sv.Boards[board].Settings.MaxRes = uint(val)
-		}
-
-		if _, ok := sv.Boards[board].Settings.Raw["BBS_MESSAGE_MAXLEN"]; !ok {
-			sv.Boards[board].Settings.MaxLen = 1000
-		} else {
-			val, _ := strconv.Atoi(sv.Boards[board].Settings.Raw["BBS_MESSAGE_MAXLEN"])
-			sv.Boards[board].Settings.MaxLen = uint(val)
-		}
+		sv.readSettings(board) //設定
 
 		if !sv.Config.NoRam {
 			keys := searchkeys(sv.Dir + "/" + board + "/dat")
@@ -218,19 +198,4 @@ func (sv *Server) getsubjects(bbs string) string {
 		}
 	}
 	return subjects
-}
-
-func (sv *Server) readsetting(bbs string) map[string]string {
-	path := filepath.Clean(sv.Dir + "/" + bbs + "/setting.txt")
-	txt := readalltxt(path)
-	buf := bytes.NewBufferString(toUTF(txt))
-	scanner := bufio.NewScanner(buf)
-
-	settings := map[string]string{}
-	for scanner.Scan() { //1行ずつ読み出し
-		text := scanner.Text()
-		strs := strings.SplitN(text, "=", 2)
-		settings[strs[0]] = strs[1] //setting[key] = val
-	}
-	return settings
 }
