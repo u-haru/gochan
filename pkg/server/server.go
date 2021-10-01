@@ -82,7 +82,7 @@ func (sv *Server) Start() {
 	httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
 	for i := range sv.Boards {
 		httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasSuffix(r.URL.Path, "/") {
+			if strings.HasSuffix(r.URL.Path, "/") || strings.HasSuffix(r.URL.Path, ".html") {
 				w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
 			}
 			http.ServeFile(w, r, sv.Dir+r.URL.Path)
