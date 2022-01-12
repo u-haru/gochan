@@ -31,10 +31,10 @@ type board struct {
 	Threads map[string]*thread
 	Config  struct {
 		Raw           map[string]string
-		ThreadMaxRes  uint
-		MessageMaxLen uint
-		SubjectMaxLen uint
-		NoName        string
+		threadMaxRes  uint
+		messageMaxLen uint
+		subjectMaxLen uint
+		noName        string
 	}
 	Subject string
 	// Index    *template.Template
@@ -58,12 +58,6 @@ func New(dir string) *server {
 		// sv.Boards[board].Index, _ = template.ParseFiles(sv.Dir + "/" + board + "/index.html")
 
 		sv.Boards[bd].Subject = sv.getsubjects(bd)
-		dat, err := os.Create(filepath.Clean(sv.Dir + "/" + bd + "/subject.txt")) //とりあえず保存
-		if err != nil {
-			log.Println(err)
-		}
-		dat.WriteString(toSJIS(sv.Boards[bd].Subject))
-		dat.Close()
 
 		sv.readSettings(bd) //設定
 
@@ -80,8 +74,24 @@ func New(dir string) *server {
 	sv.httpserver = http.NewServeMux()
 	return sv
 }
-func (sv *server) NewBoard(bbs string) {
-	sv.Boards[bbs] = &board{Threads: map[string]*thread{}}
+func (sv *server) NewBoard(bbs, title string) {
+	bd := board{Threads: map[string]*thread{}}
+	bd.Config.Raw = map[string]string{}
+	bd.Config.Raw["BBS_TITLE"] = title
+	bd.Config.Raw["BBS_TITLE_ORIG"] = title
+	bd.Config.Raw["BBS_NONAME_NAME"] = "名無しさん"
+	bd.Config.Raw["BBS_DELETE_NAME"] = "あぼーん"
+	bd.Config.Raw["BBS_MAX_RES"] = "1000"
+	bd.Config.Raw["BBS_MESSAGE_MAXLEN"] = "2048"
+	sv.Boards[bbs] = &bd
+
+	if !exists(sv.Dir + "/" + bbs) {
+		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 755)
+	}
+
+	sv.Boards[bbs].Subject = sv.getsubjects(bbs)
+	sv.reloadSettings(bbs)
+	sv.saveSettings(bbs)
 }
 
 func (sv *server) ListenAndServe() error {
@@ -204,6 +214,18 @@ func (sv *server) getsubjects(bbs string) string {
 	return subjects
 }
 
+func (sv *server) saveSettings(bbs string) {
+	path := filepath.Clean(sv.Dir + "/" + bbs + "/setting.txt")
+	file, err := os.Create(path)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	for k, v := range sv.Boards[bbs].Config.Raw {
+		fmt.Fprint(file, toSJIS(k+"="+v+"\r\n"))
+	}
+}
+
 func (sv *server) readSettings(bbs string) {
 	path := filepath.Clean(sv.Dir + "/" + bbs + "/setting.txt")
 	txt := readalltxt(path)
@@ -220,46 +242,50 @@ func (sv *server) readSettings(bbs string) {
 	}
 	sv.Boards[bbs].Config.Raw = settings
 
+	sv.reloadSettings(bbs)
+}
+
+func (sv *server) reloadSettings(bbs string) {
 	//名無し
 	if val, ok := sv.Boards[bbs].Config.Raw["BBS_NONAME_NAME"]; !ok {
-		sv.Boards[bbs].Config.NoName = "名無し"
+		sv.Boards[bbs].Config.noName = "名無し"
 	} else {
-		sv.Boards[bbs].Config.NoName = val
+		sv.Boards[bbs].Config.noName = val
 	}
 
 	//スレストまでのレス数
 	if val, ok := sv.Boards[bbs].Config.Raw["BBS_MAX_RES"]; !ok {
-		sv.Boards[bbs].Config.ThreadMaxRes = 1000
+		sv.Boards[bbs].Config.threadMaxRes = 1000
 	} else {
 		val, err := strconv.Atoi(val)
 		if err != nil {
-			sv.Boards[bbs].Config.ThreadMaxRes = 1000
+			sv.Boards[bbs].Config.threadMaxRes = 1000
 		} else {
-			sv.Boards[bbs].Config.ThreadMaxRes = uint(val)
+			sv.Boards[bbs].Config.threadMaxRes = uint(val)
 		}
 	}
 
 	//レス長さ
 	if val, ok := sv.Boards[bbs].Config.Raw["BBS_MESSAGE_MAXLEN"]; !ok {
-		sv.Boards[bbs].Config.MessageMaxLen = 1000
+		sv.Boards[bbs].Config.messageMaxLen = 1000
 	} else {
 		val, err := strconv.Atoi(val)
 		if err != nil {
-			sv.Boards[bbs].Config.MessageMaxLen = 1000
+			sv.Boards[bbs].Config.messageMaxLen = 1000
 		} else {
-			sv.Boards[bbs].Config.MessageMaxLen = uint(val)
+			sv.Boards[bbs].Config.messageMaxLen = uint(val)
 		}
 	}
 
 	//スレタイ長さ
 	if val, ok := sv.Boards[bbs].Config.Raw["BBS_SUBJECT_MAXLEN"]; !ok {
-		sv.Boards[bbs].Config.SubjectMaxLen = 30
+		sv.Boards[bbs].Config.subjectMaxLen = 30
 	} else {
 		val, err := strconv.Atoi(val)
 		if err != nil {
-			sv.Boards[bbs].Config.SubjectMaxLen = 30
+			sv.Boards[bbs].Config.subjectMaxLen = 30
 		} else {
-			sv.Boards[bbs].Config.SubjectMaxLen = uint(val)
+			sv.Boards[bbs].Config.subjectMaxLen = uint(val)
 		}
 	}
 }

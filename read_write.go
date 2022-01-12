@@ -43,7 +43,7 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	} else {
 		if subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", now.Unix())
-			if uint(len(subject)) > board.Config.SubjectMaxLen {
+			if uint(len(subject)) > board.Config.subjectMaxLen {
 				dispError(w, "タイトルが長すぎます!")
 				return
 			}
@@ -68,9 +68,9 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 		if from == "" {
-			from = board.Config.NoName
+			from = board.Config.noName
 		}
-		if uint(len(message)) > board.Config.MessageMaxLen {
+		if uint(len(message)) > board.Config.messageMaxLen {
 			dispError(w, "本文が長すぎます!")
 			return
 		}
@@ -93,16 +93,16 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			defer dat.Close()
 			bytes, _ := ioutil.ReadAll(dat)
 			kakikominum = uint(strings.Count(toUTF(string(bytes)), "\n"))
-			if kakikominum >= board.Config.ThreadMaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.ThreadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+			if kakikominum >= board.Config.threadMaxRes {
+				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 				return
 			} else {
 				dat.WriteString(toSJIS(outdat))
 				kakikominum++
 			}
 		} else {
-			if board.Threads[key].Num >= board.Config.ThreadMaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.ThreadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+			if board.Threads[key].Num >= board.Config.threadMaxRes {
+				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 				return
 			} else {
 				board.Threads[key].Lock.Lock()

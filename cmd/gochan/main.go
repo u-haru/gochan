@@ -35,6 +35,7 @@ func main() {
 		go canseler(c, Server.Saver)
 	}
 	log.Println("Listening on: " + Server.Host)
+	// Server.NewBoard("test", "テスト")
 	log.Println(Server.ListenAndServe())
 }
 
