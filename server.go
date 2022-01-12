@@ -214,7 +214,9 @@ func (sv *server) readSettings(bbs string) {
 	for scanner.Scan() { //1行ずつ読み出し
 		text := scanner.Text()
 		strs := strings.SplitN(text, "=", 2)
-		settings[strs[0]] = strs[1] //setting[key] = val
+		if len(strs) > 1 {
+			settings[strs[0]] = strs[1] //setting[key] = val
+		}
 	}
 	sv.Boards[bbs].Config.Raw = settings
 
