@@ -36,13 +36,15 @@ type board struct {
 		noName        string
 	}
 	Subject string
+	server  *server
 	// Index    *template.Template
 }
 
 type thread struct {
-	Lock sync.RWMutex
-	Dat  string
-	Num  uint
+	Lock  sync.RWMutex
+	Dat   string
+	Num   uint
+	board *board
 }
 
 func New(dir string) *server {
@@ -51,19 +53,13 @@ func New(dir string) *server {
 	sv.Boards = map[string]*board{}
 	bds := searchboards(sv.Dir)
 	for _, bd := range bds { //板情報読み取り
-		sv.Boards[bd] = &board{Threads: map[string]*thread{}}
 		log.Println("board found: " + bd)
-
-		// sv.Boards[board].Index, _ = template.ParseFiles(sv.Dir + "/" + board + "/index.html")
-
-		sv.Boards[bd].Subject = sv.getsubjects(bd)
-
-		sv.readSettings(bd) //設定
+		sv.InitBoard(bd)
+		sv.readSettings(bd)
 
 		keys := searchkeys(sv.Dir + "/" + bd + "/dat")
 		for _, key := range keys { //スレ情報読み込み
-			sv.Boards[bd].Threads[key] = &thread{}
-			sv.Boards[bd].Threads[key].Lock = sync.RWMutex{}
+			sv.Boards[bd].InitThread(key)
 			sv.Boards[bd].Threads[key].Dat = toUTF(readalltxt(sv.Dir + "/" + bd + "/dat/" + key + ".dat"))
 			sv.Boards[bd].Threads[key].Num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
 		}
@@ -71,24 +67,21 @@ func New(dir string) *server {
 	sv.httpserver = http.NewServeMux()
 	return sv
 }
-func (sv *server) NewBoard(bbs, title string) {
-	bd := board{Threads: map[string]*thread{}}
+
+func (sv *server) InitBoard(bbs string) *board {
+	bd := &board{Threads: map[string]*thread{}}
 	bd.Config.Raw = map[string]string{}
-	bd.Config.Raw["BBS_TITLE"] = title
-	bd.Config.Raw["BBS_TITLE_ORIG"] = title
-	bd.Config.Raw["BBS_NONAME_NAME"] = "名無しさん"
-	bd.Config.Raw["BBS_DELETE_NAME"] = "あぼーん"
-	bd.Config.Raw["BBS_MAX_RES"] = "1000"
-	bd.Config.Raw["BBS_MESSAGE_MAXLEN"] = "2048"
-	sv.Boards[bbs] = &bd
+	bd.server = sv
+	bd.Subject = sv.getsubjects(bbs)
+	sv.Boards[bbs] = bd
+	return bd
+}
 
-	if !exists(sv.Dir + "/" + bbs) {
-		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 755)
-	}
-
-	sv.Boards[bbs].Subject = sv.getsubjects(bbs)
-	sv.reloadSettings(bbs)
-	sv.saveSettings(bbs)
+func (bd *board) InitThread(key string) *thread {
+	th := &thread{}
+	th.Lock = sync.RWMutex{}
+	bd.Threads[key] = th
+	return th
 }
 
 func (sv *server) ListenAndServe() error {

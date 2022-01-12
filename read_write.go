@@ -50,7 +50,7 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				dispError(w, "keyが不正です!")
 				return
 			}
-			board.Threads[key] = &thread{}
+			board.InitThread(key)
 		} else {
 			if _, ok := board.Threads[key]; !ok {
 				dispError(w, "keyが不正です!")
@@ -95,11 +95,11 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		画面を切り替えるまでしばらくお待ち下さい。
 		</body>
 		</html>`)))
-		sv.refresh_subjects(bbs, key, subject, fmt.Sprintf("%d", kakikominum))
+		board.refresh_subjects(bbs, key, subject, fmt.Sprintf("%d", kakikominum))
 	}
 }
 
-func (sv *server) refresh_subjects(bbs string, key string, subject string, kakikominum string) {
+func (bd *board) refresh_subjects(bbs string, key string, subject string, kakikominum string) {
 	// subjects := map[string]string{} //マップ
 	var subs []struct {
 		key   string
@@ -107,7 +107,7 @@ func (sv *server) refresh_subjects(bbs string, key string, subject string, kakik
 	}
 
 	var buf *bytes.Buffer
-	buf = bytes.NewBufferString(sv.Boards[bbs].Subject)
+	buf = bytes.NewBufferString(bd.Subject)
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() { //1行ずつ読み出し
 		tmp := strings.Split(scanner.Text(), "<>")
@@ -164,7 +164,7 @@ func (sv *server) refresh_subjects(bbs string, key string, subject string, kakik
 		}
 	}
 
-	sv.Boards[bbs].Subject = tmp
+	bd.Subject = tmp
 }
 
 func createid(w http.ResponseWriter, remote string) string {
@@ -244,6 +244,23 @@ func readalltxt(path string) string {
 	return string(tmp)
 }
 
+func (sv *server) NewBoard(bbs, title string) {
+	if !exists(sv.Dir + "/" + bbs) {
+		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 755)
+	}
+	bd := sv.InitBoard(bbs)
+	bd.Config.Raw["BBS_TITLE"] = title
+	bd.Config.Raw["BBS_TITLE_ORIG"] = title
+	bd.Config.Raw["BBS_NONAME_NAME"] = "名無しさん"
+	bd.Config.Raw["BBS_DELETE_NAME"] = "あぼーん"
+	bd.Config.Raw["BBS_MAX_RES"] = "1000"
+	bd.Config.Raw["BBS_MESSAGE_MAXLEN"] = "2048"
+	bd.Config.Raw["BBS_SUBJECT_MAXLEN"] = "30"
+
+	sv.reloadSettings(bbs)
+	sv.saveSettings(bbs)
+}
+
 func (sv *server) DeleteBoard(bbs string) {
 	os.Remove(sv.Dir + "/" + bbs)
 	if _, ok := sv.Boards[bbs]; ok {
@@ -251,12 +268,10 @@ func (sv *server) DeleteBoard(bbs string) {
 	}
 }
 
-func (sv *server) DeleteThread(bbs, key string) {
-	os.Remove(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
-	if bd, ok := sv.Boards[bbs]; ok {
-		if _, ok := bd.Threads[key]; ok {
-			delete(bd.Threads, key)
-		}
+func (bd *board) DeleteThread(bbs, key string) {
+	os.Remove(bd.server.Dir + "/" + bbs + "/dat/" + key + ".dat")
+	if _, ok := bd.Threads[key]; ok {
+		delete(bd.Threads, key)
 	}
 }
 
