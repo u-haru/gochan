@@ -227,7 +227,11 @@ func (sv *server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	path = strings.TrimSuffix(path, "/")
 	bbs := strings.Split(path, "/")[0]
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
-	stream_toSJIS(bytes.NewReader([]byte(sv.Boards[bbs].Subject)), w)
+	if bd, ok := sv.Boards[bbs]; ok {
+		stream_toSJIS(strings.NewReader(bd.Subject), w)
+	} else {
+		dispError(w, "bbsが不正です!")
+	}
 }
 
 func dispError(w http.ResponseWriter, stat string) {

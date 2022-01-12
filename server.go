@@ -69,6 +69,10 @@ func NewServer(dir string) *server {
 			sv.Boards[bd].Threads[key].num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
 		}
 	}
+	if len(bds) == 0 {
+		sv.NewBoard("Sample", "サンプル")
+		log.Println("No boards Found! Created Sample board")
+	}
 	sv.httpserver = http.NewServeMux()
 	return sv
 }
@@ -169,6 +173,10 @@ func (sv *server) Saver() {
 			dat.Close()
 
 			kakikomis := strings.Split(t.Dat, "\n")
+			if len(kakikomis)-2 < 0 {
+				os.Remove(path)
+				continue
+			}
 			lastkakikomidate := strings.Split(kakikomis[len(kakikomis)-2], "<>")[2] //-2なのは最後が空行で終わるから
 			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
 			lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
@@ -207,8 +215,12 @@ func (bd *board) loadsubject() {
 
 			num := uint(strings.Count(toUTF(string(dat)), "\n"))
 
-			subject := strings.Split(scanner.Text(), "<>")[4]
-			subjects += file.Name() + "<>" + subject + " (" + fmt.Sprintf("%d", num) + ")\n"
+			tmp := strings.Split(scanner.Text(), "<>")
+			if len(tmp) < 4 {
+				os.Remove(datpath + file.Name())
+				continue
+			}
+			subjects += file.Name() + "<>" + tmp[4] + " (" + fmt.Sprintf("%d", num) + ")\n"
 		}
 	}
 	bd.Subject = subjects
