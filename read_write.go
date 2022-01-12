@@ -69,9 +69,9 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			return
 		}
 
-		message = escape.Replace(message)                                                                                                     //メッセージをエスケープ
-		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " " + createid(w, r.RemoteAddr) //2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
-		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                                //吐き出すDat
+		message = escape.Replace(message)                                                                                                  //メッセージをエスケープ
+		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " " + createid(r.RemoteAddr) //2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
+		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                             //吐き出すDat
 
 		var kakikominum uint
 		if board.Threads[key].num >= board.Config.threadMaxRes {
@@ -167,7 +167,7 @@ func (bd *board) refresh_subjects(bbs string, key string, subject string, kakiko
 	bd.Subject = tmp
 }
 
-func createid(w http.ResponseWriter, remote string) string {
+func createid(remote string) string {
 	now := time.Now()
 	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
 	h := md5.New()
