@@ -69,9 +69,10 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			return
 		}
 
-		message = escape.Replace(message)                                                                                                  //メッセージをエスケープ
-		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " " + createid(r.RemoteAddr) //2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
-		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                             //吐き出すDat
+		message = escape.Replace(message)                                                                                         // メッセージをエスケープ
+		id := GenerateID(r.RemoteAddr)                                                                                            // ID生成
+		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " ID:" + string(id) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
+		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                    // 吐き出すDat
 
 		var kakikominum uint
 		if board.Threads[key].num >= board.Config.threadMaxRes {
@@ -167,7 +168,8 @@ func (bd *board) refresh_subjects(bbs string, key string, subject string, kakiko
 	bd.Subject = tmp
 }
 
-func createid(remote string) string {
+// 8バイトのランダムな値+1バイトの"0"を返す
+func GenerateID(remote string) []byte {
 	now := time.Now()
 	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
 	h := md5.New()
@@ -184,9 +186,7 @@ func createid(remote string) string {
 	}
 	b[8] = '0'
 
-	id := "ID:" + string(b[:])
-
-	return id
+	return b
 }
 
 func (sv *server) dat(w http.ResponseWriter, r *http.Request) { //dat
