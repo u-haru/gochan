@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -112,9 +111,9 @@ func (sv *server) ListenAndServe() error {
 
 func searchboards(dir string) []string {
 	dir = filepath.Clean(dir)
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	var paths []string
@@ -133,9 +132,9 @@ func searchboards(dir string) []string {
 
 func searchdats(datdir string) []string {
 	datdir = filepath.Clean(datdir)
-	files, err := ioutil.ReadDir(datdir)
+	files, err := os.ReadDir(datdir)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	var paths []string
@@ -188,12 +187,16 @@ func (sv *server) Saver() {
 
 func (bd *board) loadsubject() {
 	datpath := bd.server.Dir + "/" + bd.bbs + "/dat/"
-	files, err := ioutil.ReadDir(filepath.Clean(datpath))
+	files, err := os.ReadDir(filepath.Clean(datpath))
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
-	sort.Slice(files, func(i, j int) bool { return files[i].ModTime().After(files[j].ModTime()) }) //日付順
+	sort.Slice(files, func(i, j int) bool {
+		info_i, _ := files[i].Info()
+		info_j, _ := files[j].Info()
+		return info_i.ModTime().After(info_j.ModTime())
+	}) //日付順
 	subjects := ""
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".dat") {
