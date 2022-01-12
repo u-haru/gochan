@@ -28,7 +28,7 @@ var escape = strings.NewReplacer(
 
 var wdays = []string{"日", "月", "火", "水", "木", "金", "土"}
 
-func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
+func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
 	subject := toUTF(r.PostFormValue("subject"))
 	from := toUTF(r.PostFormValue("FROM"))
 	mail := toUTF(r.PostFormValue("mail"))
@@ -43,7 +43,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	} else {
 		if subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", now.Unix())
-			if uint(len(subject)) > board.Settings.SubjectMaxLen {
+			if uint(len(subject)) > board.Config.SubjectMaxLen {
 				dispError(w, "タイトルが長すぎます!")
 				return
 			}
@@ -52,7 +52,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				return
 			}
 			if !sv.Config.NoRam {
-				board.Threads[key] = &Thread{}
+				board.Threads[key] = &thread{}
 			}
 		} else {
 			if !sv.Config.NoRam {
@@ -68,9 +68,9 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 		if from == "" {
-			from = board.Settings.NoName
+			from = board.Config.NoName
 		}
-		if uint(len(message)) > board.Settings.MessageMaxLen {
+		if uint(len(message)) > board.Config.MessageMaxLen {
 			dispError(w, "本文が長すぎます!")
 			return
 		}
@@ -93,16 +93,16 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			defer dat.Close()
 			bytes, _ := ioutil.ReadAll(dat)
 			kakikominum = uint(strings.Count(toUTF(string(bytes)), "\n"))
-			if kakikominum >= board.Settings.ThreadMaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.Settings.ThreadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+			if kakikominum >= board.Config.ThreadMaxRes {
+				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.ThreadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 				return
 			} else {
 				dat.WriteString(toSJIS(outdat))
 				kakikominum++
 			}
 		} else {
-			if board.Threads[key].Num >= board.Settings.ThreadMaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.Settings.ThreadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+			if board.Threads[key].Num >= board.Config.ThreadMaxRes {
+				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.ThreadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 				return
 			} else {
 				board.Threads[key].Lock.Lock()
@@ -127,7 +127,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	}
 }
 
-func (sv *Server) refresh_subjects(bbs string, key string, subject string, kakikominum string) {
+func (sv *server) refresh_subjects(bbs string, key string, subject string, kakikominum string) {
 	// subjects := map[string]string{} //マップ
 	var subs []struct {
 		key   string
@@ -208,7 +208,7 @@ func (sv *Server) refresh_subjects(bbs string, key string, subject string, kakik
 	}
 }
 
-func (sv *Server) createid(w http.ResponseWriter, remote string) string {
+func (sv *server) createid(w http.ResponseWriter, remote string) string {
 	now := time.Now()
 	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
 	h := md5.New()
@@ -230,7 +230,11 @@ func (sv *Server) createid(w http.ResponseWriter, remote string) string {
 	return id
 }
 
-func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
+func (sv *server) dat(w http.ResponseWriter, r *http.Request) { //dat
+	if sv.Config.NoRam {
+		sv.plaintxt(w, r)
+		return
+	}
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	strs := strings.Split(path, "/")
@@ -254,14 +258,18 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	}
 }
 
-func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
+func (sv *server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
+	if sv.Config.NoRam {
+		sv.plaintxt(w, r)
+		return
+	}
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	bbs := strings.Split(path, "/")[0]
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	stream_toSJIS(bytes.NewReader([]byte(sv.Boards[bbs].Subject)), w)
 }
-func (sv *Server) plaintxt(w http.ResponseWriter, r *http.Request) { //subject.txt
+func (sv *server) plaintxt(w http.ResponseWriter, r *http.Request) { //subject.txt
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	http.ServeFile(w, r, sv.Dir+r.URL.Path)
 }

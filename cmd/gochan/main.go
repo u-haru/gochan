@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 
@@ -33,7 +34,8 @@ func main() {
 	} else {
 		go canseler(c, Server.Saver)
 	}
-	Server.Start()
+	log.Println("Listening on: " + Server.Host)
+	log.Println(Server.ListenAndServe())
 }
 
 func canseler(c chan os.Signal, exitfunc func()) {

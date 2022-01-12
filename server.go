@@ -16,20 +16,20 @@ import (
 	"time"
 )
 
-type Server struct {
+type server struct {
 	Dir    string
 	Host   string
-	Boards map[string]*Board
+	Boards map[string]*board
 	Config struct {
-		NoRam       bool
-		NoWriteDisk bool
+		NoRam bool
 	}
+	httpserver *http.ServeMux
 }
 
-type Board struct {
-	Title    string
-	Threads  map[string]*Thread
-	Settings struct {
+type board struct {
+	Title   string
+	Threads map[string]*thread
+	Config  struct {
 		Raw           map[string]string
 		ThreadMaxRes  uint
 		MessageMaxLen uint
@@ -40,66 +40,67 @@ type Board struct {
 	// Index    *template.Template
 }
 
-type Thread struct {
+type thread struct {
 	Lock sync.RWMutex
 	Dat  string
 	Num  uint
 }
 
-func New(dir string) *Server {
-	sv := new(Server)
+func New(dir string) *server {
+	sv := new(server)
 	sv.Dir = filepath.Clean(dir)
-	sv.Boards = map[string]*Board{}
-	boards := searchboards(sv.Dir)
-	for _, board := range boards { //板情報読み取り
-		sv.Boards[board] = &Board{Threads: map[string]*Thread{}}
-		log.Println("board found: " + board)
+	sv.Boards = map[string]*board{}
+	bds := searchboards(sv.Dir)
+	for _, bd := range bds { //板情報読み取り
+		sv.Boards[bd] = &board{Threads: map[string]*thread{}}
+		log.Println("board found: " + bd)
 
 		// sv.Boards[board].Index, _ = template.ParseFiles(sv.Dir + "/" + board + "/index.html")
 
-		sv.Boards[board].Subject = sv.getsubjects(board)
-		dat, err := os.Create(filepath.Clean(sv.Dir + "/" + board + "/subject.txt")) //とりあえず保存
+		sv.Boards[bd].Subject = sv.getsubjects(bd)
+		dat, err := os.Create(filepath.Clean(sv.Dir + "/" + bd + "/subject.txt")) //とりあえず保存
 		if err != nil {
 			log.Println(err)
 		}
-		dat.WriteString(toSJIS(sv.Boards[board].Subject))
+		dat.WriteString(toSJIS(sv.Boards[bd].Subject))
 		dat.Close()
 
-		sv.readSettings(board) //設定
+		sv.readSettings(bd) //設定
 
 		if !sv.Config.NoRam {
-			keys := searchkeys(sv.Dir + "/" + board + "/dat")
+			keys := searchkeys(sv.Dir + "/" + bd + "/dat")
 			for _, key := range keys { //スレ情報読み込み
-				sv.Boards[board].Threads[key] = &Thread{}
-				sv.Boards[board].Threads[key].Lock = sync.RWMutex{}
-				sv.Boards[board].Threads[key].Dat = toUTF(readalltxt(sv.Dir + "/" + board + "/dat/" + key + ".dat"))
-				sv.Boards[board].Threads[key].Num = uint(strings.Count(sv.Boards[board].Threads[key].Dat, "\n"))
+				sv.Boards[bd].Threads[key] = &thread{}
+				sv.Boards[bd].Threads[key].Lock = sync.RWMutex{}
+				sv.Boards[bd].Threads[key].Dat = toUTF(readalltxt(sv.Dir + "/" + bd + "/dat/" + key + ".dat"))
+				sv.Boards[bd].Threads[key].Num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
 			}
 		}
 	}
+	sv.httpserver = http.NewServeMux()
 	return sv
 }
+func (sv *server) NewBoard(bbs string) {
+	sv.Boards[bbs] = &board{Threads: map[string]*thread{}}
+}
 
-func (sv *Server) Start() {
-	httpserver := http.NewServeMux()
-	httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
-	for i := range sv.Boards {
-		httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasSuffix(r.URL.Path, "/") || strings.HasSuffix(r.URL.Path, ".html") {
-				w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-			}
-			http.ServeFile(w, r, sv.Dir+r.URL.Path)
-		})
-		if !sv.Config.NoRam {
-			httpserver.HandleFunc("/"+i+"/dat/", sv.dat)
-			httpserver.HandleFunc("/"+i+"/subject.txt", sv.sub)
-		} else {
-			httpserver.HandleFunc("/"+i+"/dat/", sv.plaintxt)
-			httpserver.HandleFunc("/"+i+"/subject.txt", sv.plaintxt)
+func (sv *server) ListenAndServe() error {
+	sv.httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
+	sv.httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/dat/") { //dat
+			sv.dat(w, r)
+			return
+		} else if strings.Contains(r.URL.Path, "/subject.txt") { //subject.txt
+			sv.sub(w, r)
+			return
 		}
-	}
-	log.Println("Listening on: " + sv.Host)
-	log.Println(http.ListenAndServe(sv.Host, httpserver))
+
+		if strings.HasSuffix(r.URL.Path, "/") || strings.HasSuffix(r.URL.Path, ".html") {
+			w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
+		}
+		http.ServeFile(w, r, sv.Dir+r.URL.Path)
+	})
+	return http.ListenAndServe(sv.Host, sv.httpserver)
 }
 
 func searchboards(dir string) []string {
@@ -150,7 +151,7 @@ func exists(name string) bool {
 	return !os.IsNotExist(err)
 }
 
-func (sv *Server) Saver() {
+func (sv *server) Saver() {
 	for bbs, b := range sv.Boards {
 		for key, t := range b.Threads {
 			path := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
@@ -178,7 +179,7 @@ func (sv *Server) Saver() {
 	}
 }
 
-func (sv *Server) getsubjects(bbs string) string {
+func (sv *server) getsubjects(bbs string) string {
 	datpath := filepath.Clean(sv.Dir + "/" + bbs + "/dat/")
 	files, err := ioutil.ReadDir(datpath)
 	if err != nil {
@@ -203,7 +204,7 @@ func (sv *Server) getsubjects(bbs string) string {
 	return subjects
 }
 
-func (sv *Server) readSettings(bbs string) {
+func (sv *server) readSettings(bbs string) {
 	path := filepath.Clean(sv.Dir + "/" + bbs + "/setting.txt")
 	txt := readalltxt(path)
 	buf := bytes.NewBufferString(toUTF(txt))
@@ -215,36 +216,48 @@ func (sv *Server) readSettings(bbs string) {
 		strs := strings.SplitN(text, "=", 2)
 		settings[strs[0]] = strs[1] //setting[key] = val
 	}
-	sv.Boards[bbs].Settings.Raw = settings
+	sv.Boards[bbs].Config.Raw = settings
 
 	//名無し
-	if _, ok := sv.Boards[bbs].Settings.Raw["BBS_NONAME_NAME"]; !ok {
-		sv.Boards[bbs].Settings.NoName = "名無し"
+	if val, ok := sv.Boards[bbs].Config.Raw["BBS_NONAME_NAME"]; !ok {
+		sv.Boards[bbs].Config.NoName = "名無し"
 	} else {
-		sv.Boards[bbs].Settings.NoName = sv.Boards[bbs].Settings.Raw["BBS_NONAME_NAME"]
+		sv.Boards[bbs].Config.NoName = val
 	}
 
 	//スレストまでのレス数
-	if _, ok := sv.Boards[bbs].Settings.Raw["BBS_MAX_RES"]; !ok {
-		sv.Boards[bbs].Settings.ThreadMaxRes = 1000
+	if val, ok := sv.Boards[bbs].Config.Raw["BBS_MAX_RES"]; !ok {
+		sv.Boards[bbs].Config.ThreadMaxRes = 1000
 	} else {
-		val, _ := strconv.Atoi(sv.Boards[bbs].Settings.Raw["BBS_MAX_RES"])
-		sv.Boards[bbs].Settings.ThreadMaxRes = uint(val)
+		val, err := strconv.Atoi(val)
+		if err != nil {
+			sv.Boards[bbs].Config.ThreadMaxRes = 1000
+		} else {
+			sv.Boards[bbs].Config.ThreadMaxRes = uint(val)
+		}
 	}
 
 	//レス長さ
-	if _, ok := sv.Boards[bbs].Settings.Raw["BBS_MESSAGE_MAXLEN"]; !ok {
-		sv.Boards[bbs].Settings.MessageMaxLen = 1000
+	if val, ok := sv.Boards[bbs].Config.Raw["BBS_MESSAGE_MAXLEN"]; !ok {
+		sv.Boards[bbs].Config.MessageMaxLen = 1000
 	} else {
-		val, _ := strconv.Atoi(sv.Boards[bbs].Settings.Raw["BBS_MESSAGE_MAXLEN"])
-		sv.Boards[bbs].Settings.MessageMaxLen = uint(val)
+		val, err := strconv.Atoi(val)
+		if err != nil {
+			sv.Boards[bbs].Config.MessageMaxLen = 1000
+		} else {
+			sv.Boards[bbs].Config.MessageMaxLen = uint(val)
+		}
 	}
 
 	//スレタイ長さ
-	if _, ok := sv.Boards[bbs].Settings.Raw["BBS_SUBJECT_MAXLEN"]; !ok {
-		sv.Boards[bbs].Settings.SubjectMaxLen = 30
+	if val, ok := sv.Boards[bbs].Config.Raw["BBS_SUBJECT_MAXLEN"]; !ok {
+		sv.Boards[bbs].Config.SubjectMaxLen = 30
 	} else {
-		val, _ := strconv.Atoi(sv.Boards[bbs].Settings.Raw["BBS_SUBJECT_MAXLEN"])
-		sv.Boards[bbs].Settings.SubjectMaxLen = uint(val)
+		val, err := strconv.Atoi(val)
+		if err != nil {
+			sv.Boards[bbs].Config.SubjectMaxLen = 30
+		} else {
+			sv.Boards[bbs].Config.SubjectMaxLen = uint(val)
+		}
 	}
 }
