@@ -11,29 +11,22 @@ import (
 )
 
 var (
-	Dir   = ""
-	Host  = ""
-	Noram = false
+	Dir  = ""
+	Host = ""
 )
 
 func main() {
 	flag.StringVar(&Dir, "d", "./Server", "-d [ServerDir]")
 	flag.StringVar(&Host, "h", "0.0.0.0:80", "-h [Host]")
-	flag.BoolVar(&Noram, "n", false, "-n(Noram mode)")
 	flag.Parse()
 
 	Server := gochan.New(Dir)
 	Server.Host = Host
-	Server.Config.NoRam = Noram
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 
-	if Server.Config.NoRam {
-		go canseler(c, nil)
-	} else {
-		go canseler(c, Server.Saver)
-	}
+	go canseler(c, Server.Saver)
 	log.Println("Listening on: " + Server.Host)
 	// Server.NewBoard("test", "テスト")
 	log.Println(Server.ListenAndServe())

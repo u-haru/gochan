@@ -12,7 +12,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -51,20 +50,11 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				dispError(w, "keyが不正です!")
 				return
 			}
-			if !sv.Config.NoRam {
-				board.Threads[key] = &thread{}
-			}
+			board.Threads[key] = &thread{}
 		} else {
-			if !sv.Config.NoRam {
-				if _, ok := board.Threads[key]; !ok {
-					dispError(w, "keyが不正です!")
-					return
-				}
-			} else {
-				if !exists(sv.Dir + "/" + bbs + "/dat/" + key + ".dat") {
-					dispError(w, "keyが不正です!")
-					return
-				}
+			if _, ok := board.Threads[key]; !ok {
+				dispError(w, "keyが不正です!")
+				return
 			}
 		}
 		if from == "" {
@@ -79,38 +69,20 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			return
 		}
 
-		message = escape.Replace(message)                                                                                                        //メッセージをエスケープ
-		datpath := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")                                                                   //datのパス
-		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " " + sv.createid(w, r.RemoteAddr) //2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
-		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                                   //吐き出すDat
+		message = escape.Replace(message)                                                                                                     //メッセージをエスケープ
+		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " " + createid(w, r.RemoteAddr) //2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
+		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                                //吐き出すDat
 
 		var kakikominum uint
-		if sv.Config.NoRam { //RAMにデータを展開していない場合
-			dat, err := os.OpenFile(datpath, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0666) //追記モード
-			if err != nil {
-				log.Println(err)
-			}
-			defer dat.Close()
-			bytes, _ := ioutil.ReadAll(dat)
-			kakikominum = uint(strings.Count(toUTF(string(bytes)), "\n"))
-			if kakikominum >= board.Config.threadMaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
-				return
-			} else {
-				dat.WriteString(toSJIS(outdat))
-				kakikominum++
-			}
+		if board.Threads[key].Num >= board.Config.threadMaxRes {
+			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+			return
 		} else {
-			if board.Threads[key].Num >= board.Config.threadMaxRes {
-				dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
-				return
-			} else {
-				board.Threads[key].Lock.Lock()
-				board.Threads[key].Dat += outdat
-				board.Threads[key].Num++
-				board.Threads[key].Lock.Unlock()
-				kakikominum = board.Threads[key].Num
-			}
+			board.Threads[key].Lock.Lock()
+			board.Threads[key].Dat += outdat
+			board.Threads[key].Num++
+			board.Threads[key].Lock.Unlock()
+			kakikominum = board.Threads[key].Num
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
@@ -135,11 +107,7 @@ func (sv *server) refresh_subjects(bbs string, key string, subject string, kakik
 	}
 
 	var buf *bytes.Buffer
-	if sv.Config.NoRam {
-		buf = bytes.NewBufferString(toUTF(readalltxt(sv.Dir + "/" + bbs + "/subject.txt")))
-	} else {
-		buf = bytes.NewBufferString(sv.Boards[bbs].Subject)
-	}
+	buf = bytes.NewBufferString(sv.Boards[bbs].Subject)
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() { //1行ずつ読み出し
 		tmp := strings.Split(scanner.Text(), "<>")
@@ -196,19 +164,10 @@ func (sv *server) refresh_subjects(bbs string, key string, subject string, kakik
 		}
 	}
 
-	if sv.Config.NoRam {
-		subject_txt, err := os.Create(sv.Dir + "/" + bbs + "/subject.txt") //書き込み
-		if err != nil {
-			log.Println(err)
-		}
-		defer subject_txt.Close()
-		subject_txt.WriteString(toSJIS(tmp))
-	} else {
-		sv.Boards[bbs].Subject = tmp
-	}
+	sv.Boards[bbs].Subject = tmp
 }
 
-func (sv *server) createid(w http.ResponseWriter, remote string) string {
+func createid(w http.ResponseWriter, remote string) string {
 	now := time.Now()
 	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
 	h := md5.New()
@@ -231,10 +190,6 @@ func (sv *server) createid(w http.ResponseWriter, remote string) string {
 }
 
 func (sv *server) dat(w http.ResponseWriter, r *http.Request) { //dat
-	if sv.Config.NoRam {
-		sv.plaintxt(w, r)
-		return
-	}
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	strs := strings.Split(path, "/")
@@ -259,19 +214,11 @@ func (sv *server) dat(w http.ResponseWriter, r *http.Request) { //dat
 }
 
 func (sv *server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
-	if sv.Config.NoRam {
-		sv.plaintxt(w, r)
-		return
-	}
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	bbs := strings.Split(path, "/")[0]
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	stream_toSJIS(bytes.NewReader([]byte(sv.Boards[bbs].Subject)), w)
-}
-func (sv *server) plaintxt(w http.ResponseWriter, r *http.Request) { //subject.txt
-	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
-	http.ServeFile(w, r, sv.Dir+r.URL.Path)
 }
 
 func dispError(w http.ResponseWriter, stat string) {
@@ -295,4 +242,30 @@ func readalltxt(path string) string {
 	tmp, _ := ioutil.ReadAll(file)
 	file.Close()
 	return string(tmp)
+}
+
+func (sv *server) DeleteBoard(bbs string) {
+	os.Remove(sv.Dir + "/" + bbs)
+	if _, ok := sv.Boards[bbs]; ok {
+		delete(sv.Boards, bbs)
+	}
+}
+
+func (sv *server) DeleteThread(bbs, key string) {
+	os.Remove(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+	if bd, ok := sv.Boards[bbs]; ok {
+		if _, ok := bd.Threads[key]; ok {
+			delete(bd.Threads, key)
+		}
+	}
+}
+
+func (th *thread) DeleteRes(bbs string, key string, num int) {
+	tmp := strings.Split(th.Dat, "\n")
+	if len(tmp) >= num {
+		targetres := tmp[num-1]
+		tmp := strings.Split(targetres, "<>")
+		replaceres := "あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4]
+		strings.Replace(th.Dat, targetres, replaceres, 1)
+	}
 }

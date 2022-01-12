@@ -21,7 +21,6 @@ type server struct {
 	Host   string
 	Boards map[string]*board
 	Config struct {
-		NoRam bool
 	}
 	httpserver *http.ServeMux
 }
@@ -61,14 +60,12 @@ func New(dir string) *server {
 
 		sv.readSettings(bd) //設定
 
-		if !sv.Config.NoRam {
-			keys := searchkeys(sv.Dir + "/" + bd + "/dat")
-			for _, key := range keys { //スレ情報読み込み
-				sv.Boards[bd].Threads[key] = &thread{}
-				sv.Boards[bd].Threads[key].Lock = sync.RWMutex{}
-				sv.Boards[bd].Threads[key].Dat = toUTF(readalltxt(sv.Dir + "/" + bd + "/dat/" + key + ".dat"))
-				sv.Boards[bd].Threads[key].Num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
-			}
+		keys := searchkeys(sv.Dir + "/" + bd + "/dat")
+		for _, key := range keys { //スレ情報読み込み
+			sv.Boards[bd].Threads[key] = &thread{}
+			sv.Boards[bd].Threads[key].Lock = sync.RWMutex{}
+			sv.Boards[bd].Threads[key].Dat = toUTF(readalltxt(sv.Dir + "/" + bd + "/dat/" + key + ".dat"))
+			sv.Boards[bd].Threads[key].Num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
 		}
 	}
 	sv.httpserver = http.NewServeMux()

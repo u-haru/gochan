@@ -7,6 +7,4 @@ Usage of gochan:
 	-d string  
 		-d [ServerDir] (default "./Server")  
 	-h string  
-		-h [Host] (default "0.0.0.0:80")  
-	-n bool  
-		-n(Noram)
+		-h [Host] (default "0.0.0.0:80")
