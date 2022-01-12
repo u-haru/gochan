@@ -20,7 +20,7 @@ func main() {
 	flag.StringVar(&Host, "h", "0.0.0.0:80", "-h [Host]")
 	flag.Parse()
 
-	Server := gochan.New(Dir)
+	Server := gochan.NewServer(Dir)
 	Server.Host = Host
 
 	c := make(chan os.Signal, 1)

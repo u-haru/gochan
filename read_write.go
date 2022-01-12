@@ -74,15 +74,15 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                                //吐き出すDat
 
 		var kakikominum uint
-		if board.Threads[key].Num >= board.Config.threadMaxRes {
+		if board.Threads[key].num >= board.Config.threadMaxRes {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 			return
 		} else {
-			board.Threads[key].Lock.Lock()
+			board.Threads[key].lock.Lock()
 			board.Threads[key].Dat += outdat
-			board.Threads[key].Num++
-			board.Threads[key].Lock.Unlock()
-			kakikominum = board.Threads[key].Num
+			board.Threads[key].num++
+			board.Threads[key].lock.Unlock()
+			kakikominum = board.Threads[key].num
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")

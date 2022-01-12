@@ -26,7 +26,7 @@ type server struct {
 }
 
 type board struct {
-	Title   string
+	bbs     string
 	Threads map[string]*thread
 	Config  struct {
 		Raw           map[string]string
@@ -41,13 +41,13 @@ type board struct {
 }
 
 type thread struct {
-	Lock  sync.RWMutex
+	lock  sync.RWMutex
 	Dat   string
-	Num   uint
+	num   uint
 	board *board
 }
 
-func New(dir string) *server {
+func NewServer(dir string) *server {
 	sv := new(server)
 	sv.Dir = filepath.Clean(dir)
 	sv.Boards = map[string]*board{}
@@ -57,11 +57,11 @@ func New(dir string) *server {
 		sv.InitBoard(bd)
 		sv.readSettings(bd)
 
-		keys := searchkeys(sv.Dir + "/" + bd + "/dat")
+		keys := searchdats(sv.Dir + "/" + bd + "/dat")
 		for _, key := range keys { //スレ情報読み込み
 			sv.Boards[bd].InitThread(key)
 			sv.Boards[bd].Threads[key].Dat = toUTF(readalltxt(sv.Dir + "/" + bd + "/dat/" + key + ".dat"))
-			sv.Boards[bd].Threads[key].Num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
+			sv.Boards[bd].Threads[key].num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
 		}
 	}
 	sv.httpserver = http.NewServeMux()
@@ -72,14 +72,15 @@ func (sv *server) InitBoard(bbs string) *board {
 	bd := &board{Threads: map[string]*thread{}}
 	bd.Config.Raw = map[string]string{}
 	bd.server = sv
-	bd.Subject = sv.getsubjects(bbs)
+	bd.bbs = bbs
+	bd.loadsubject()
 	sv.Boards[bbs] = bd
 	return bd
 }
 
 func (bd *board) InitThread(key string) *thread {
 	th := &thread{}
-	th.Lock = sync.RWMutex{}
+	th.lock = sync.RWMutex{}
 	bd.Threads[key] = th
 	return th
 }
@@ -124,7 +125,7 @@ func searchboards(dir string) []string {
 	return paths
 }
 
-func searchkeys(datdir string) []string {
+func searchdats(datdir string) []string {
 	datdir = filepath.Clean(datdir)
 	files, err := ioutil.ReadDir(datdir)
 	if err != nil {
@@ -179,9 +180,9 @@ func (sv *server) Saver() {
 	}
 }
 
-func (sv *server) getsubjects(bbs string) string {
-	datpath := filepath.Clean(sv.Dir + "/" + bbs + "/dat/")
-	files, err := ioutil.ReadDir(datpath)
+func (bd *board) loadsubject() {
+	datpath := bd.server.Dir + "/" + bd.bbs + "/dat/"
+	files, err := ioutil.ReadDir(filepath.Clean(datpath))
 	if err != nil {
 		panic(err)
 	}
@@ -190,7 +191,7 @@ func (sv *server) getsubjects(bbs string) string {
 	subjects := ""
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".dat") {
-			dat := readalltxt(sv.Dir + "/" + bbs + "/dat/" + file.Name())
+			dat := readalltxt(datpath + file.Name())
 			buf := bytes.NewBufferString(toUTF(dat))
 			scanner := bufio.NewScanner(buf)
 			scanner.Scan()
@@ -201,7 +202,7 @@ func (sv *server) getsubjects(bbs string) string {
 			subjects += file.Name() + "<>" + subject + " (" + fmt.Sprintf("%d", num) + ")\n"
 		}
 	}
-	return subjects
+	bd.Subject = subjects
 }
 
 func (sv *server) saveSettings(bbs string) {
