@@ -1,4 +1,4 @@
-module gochan
+module github.com/u-haru/gochan
 
 go 1.16
 
