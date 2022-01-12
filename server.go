@@ -23,6 +23,12 @@ type server struct {
 	Config struct {
 	}
 	httpserver *http.ServeMux
+
+	Function struct {
+		IDGenerator func(string) []byte
+		// NGとか
+		MessageChecker func(string, string, string, string) (bool, string) //from,mail,message,subject (ok,reason)
+	}
 }
 
 type board struct {

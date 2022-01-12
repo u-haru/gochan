@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/u-haru/gochan"
 )
@@ -22,6 +23,7 @@ func main() {
 
 	Server := gochan.NewServer(Dir)
 	Server.Host = Host
+	Server.Function.MessageChecker = messageChecker
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -40,4 +42,11 @@ func canseler(c chan os.Signal, exitfunc func()) {
 	}
 	close(c)
 	os.Exit(130)
+}
+
+func messageChecker(from, mail, message, subject string) (bool, string) {
+	if strings.Contains(message, "ハゲ") {
+		return false, "ハゲじゃねえわ"
+	}
+	return true, ""
 }
