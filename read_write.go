@@ -1,8 +1,6 @@
 package gochan
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/md5"
 	"encoding/binary"
 	"fmt"
@@ -12,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -28,13 +27,13 @@ var escape = strings.NewReplacer(
 var wdays = []string{"日", "月", "火", "水", "木", "金", "土"}
 
 func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
-	subject := toUTF(r.PostFormValue("subject"))
-	from := toUTF(r.PostFormValue("FROM"))
-	mail := toUTF(r.PostFormValue("mail"))
+	subject := escape.Replace(toUTF(r.PostFormValue("subject")))
+	from := escape.Replace(toUTF(r.PostFormValue("FROM")))
+	mail := escape.Replace(toUTF(r.PostFormValue("mail")))
 	bbs := toUTF(r.PostFormValue("bbs"))
 	key := toUTF(r.PostFormValue("key"))
 	now := time.Now()
-	message := toUTF(r.PostFormValue("MESSAGE"))
+	message := escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
 
 	if board, ok := sv.Boards[bbs]; !ok {
 		dispError(w, "bbsが不正です!")
@@ -51,6 +50,9 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				return
 			}
 			board.InitThread(key)
+			if v, ok := board.Threads[key]; ok {
+				v.Title = subject
+			}
 		} else {
 			if _, ok := board.Threads[key]; !ok {
 				dispError(w, "keyが不正です!")
@@ -69,7 +71,6 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			return
 		}
 
-		message = escape.Replace(message)   // メッセージをエスケープ
 		id := GenerateID(r.RemoteAddr)      // ID生成
 		if sv.Function.IDGenerator != nil { // もしID生成器が別で指定されていれば
 			id = sv.Function.IDGenerator(r.RemoteAddr)
@@ -83,7 +84,6 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				return
 			}
 		}
-		var kakikominum uint
 		if board.Threads[key].num >= board.Config.threadMaxRes {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 			return
@@ -91,8 +91,8 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			board.Threads[key].lock.Lock()
 			board.Threads[key].Dat += outdat
 			board.Threads[key].num++
+			board.Threads[key].lastmod = now
 			board.Threads[key].lock.Unlock()
-			kakikominum = board.Threads[key].num
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
@@ -105,73 +105,34 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		画面を切り替えるまでしばらくお待ち下さい。
 		</body>
 		</html>`)))
-		board.refresh_subjects(bbs, key, subject, fmt.Sprintf("%d", kakikominum))
+		board.refresh_subjects()
 	}
 }
 
-func (bd *board) refresh_subjects(bbs string, key string, subject string, kakikominum string) {
+func (bd *board) refresh_subjects() {
 	// subjects := map[string]string{} //マップ
-	var subs []struct {
-		key   string
-		title string
+	type str struct {
+		key     string
+		title   string
+		lastmod time.Time
+	}
+	var subs []str
+
+	for i, v := range bd.Threads {
+		subs = append(subs, str{
+			key:     i,
+			title:   v.Title,
+			lastmod: v.lastmod,
+		})
 	}
 
-	var buf *bytes.Buffer
-	buf = bytes.NewBufferString(bd.Subject)
-	scanner := bufio.NewScanner(buf)
-	for scanner.Scan() { //1行ずつ読み出し
-		tmp := strings.Split(scanner.Text(), "<>")
-		tmpkey := tmp[0][:strings.LastIndex(tmp[0], ".dat")]
-		sub := tmp[1]
-		// subjects[tmpkey] = sub
-		subs = append(subs, struct {
-			key   string
-			title string
-		}{key: tmpkey, title: sub})
-	}
-	if err := scanner.Err(); err != nil {
-		log.Print(err)
-	}
-	if subject == "" {
-		// pos := strings.LastIndex(subjects[key], " (")
-		// subject = subjects[key][:pos]
-		for _, k := range subs {
-			if k.key == key {
-				subject = k.title[:strings.LastIndex(k.title, " (")]
-			}
-		}
-	}
-	// subjects[key] = subject
-	subs = append(subs, struct {
-		key   string
-		title string
-	}{key: key, title: subject})
+	sort.Slice(subs, func(i, j int) bool {
+		return subs[i].lastmod.After(subs[j].lastmod)
+	}) // ソート
 
-	var top struct {
-		key   string
-		title string
-	}
-	// top := subjects[key] //一番上に持ってくる
+	tmp := ""
 	for _, k := range subs {
-		if k.key == key {
-			top = k
-		}
-	}
-
-	// tmp := key + ".dat<>" + top + " (" + kakikominum + ")" + "\n"
-
-	// for i, k := range subjects {
-	// 	if subjects[i] != top {
-	// 		tmp += i + ".dat<>" + k + "\n"
-	// 	}
-	// }
-
-	tmp := key + ".dat<>" + top.title + " (" + kakikominum + ")" + "\n"
-
-	for _, k := range subs {
-		if k.key != top.key {
-			tmp += k.key + ".dat<>" + k.title + "\n"
-		}
+		tmp += k.key + ".dat<>" + k.title + "\n"
 	}
 
 	bd.Subject = tmp

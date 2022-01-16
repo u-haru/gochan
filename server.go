@@ -46,10 +46,12 @@ type board struct {
 }
 
 type thread struct {
-	lock  sync.RWMutex
-	Dat   string
-	num   uint
-	board *board
+	lock    sync.RWMutex
+	Title   string
+	Dat     string
+	num     uint
+	lastmod time.Time
+	board   *board
 }
 
 func NewServer(dir string) *server {
@@ -67,6 +69,18 @@ func NewServer(dir string) *server {
 			sv.Boards[bd].InitThread(key)
 			sv.Boards[bd].Threads[key].Dat = toUTF(readalltxt(sv.Dir + "/" + bd + "/dat/" + key + ".dat"))
 			sv.Boards[bd].Threads[key].num = uint(strings.Count(sv.Boards[bd].Threads[key].Dat, "\n"))
+			tmp := strings.Split(sv.Boards[bd].Threads[key].Dat, "\n")
+			sv.Boards[bd].Threads[key].Title = strings.Split(tmp[0], "<>")[4]
+
+			lastkakikomidate := strings.Split(tmp[len(tmp)-2], "<>")[2] //-2なのは最後が空行で終わるから
+			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
+			lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
+			t, err := time.Parse("2006-01-02 15:04:05.00", lastkakikomidate)
+			if err != nil {
+				log.Println(err)
+			} else {
+				sv.Boards[bd].Threads[key].lastmod = t
+			}
 		}
 	}
 	if len(bds) == 0 {
