@@ -44,9 +44,10 @@ func canseler(c chan os.Signal, exitfunc func()) {
 	os.Exit(130)
 }
 
-func messageChecker(from, mail, message, subject string) (bool, string) {
-	if strings.Contains(message, "ハゲ") {
+func messageChecker(res *gochan.Res) (bool, string) {
+	if strings.Contains(res.Message, "ハゲ") {
 		return false, "ハゲじゃねえわ"
 	}
+	res.Message = strings.ReplaceAll(res.Message, "test", "テスト")
 	return true, ""
 }

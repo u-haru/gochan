@@ -71,6 +71,19 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			return
 		}
 
+		if sv.Function.MessageChecker != nil {
+			res := &Res{from, mail, message, subject}
+			if ok, reason := sv.Function.MessageChecker(res); !ok {
+				dispError(w, reason)
+				return
+			} else {
+				from = res.From
+				mail = res.Mail
+				message = res.Message
+				subject = res.Subject
+			}
+		}
+
 		id := GenerateID(r.RemoteAddr)      // ID生成
 		if sv.Function.IDGenerator != nil { // もしID生成器が別で指定されていれば
 			id = sv.Function.IDGenerator(r.RemoteAddr)
@@ -78,12 +91,6 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " ID:" + string(id) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
 		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                    // 吐き出すDat
 
-		if sv.Function.MessageChecker != nil {
-			if ok, reason := sv.Function.MessageChecker(from, mail, message, subject); !ok {
-				dispError(w, reason)
-				return
-			}
-		}
 		if board.Threads[key].num >= board.Config.threadMaxRes {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 			return

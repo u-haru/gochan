@@ -26,7 +26,7 @@ type server struct {
 	Function struct {
 		IDGenerator func(string) []byte
 		// NGとか
-		MessageChecker func(string, string, string, string) (bool, string) //from,mail,message,subject (ok,reason)
+		MessageChecker func(*Res) (bool, string) //res (ok,reason)
 	}
 }
 
@@ -52,6 +52,10 @@ type thread struct {
 	num     uint
 	lastmod time.Time
 	board   *board
+}
+
+type Res struct {
+	From, Mail, Message, Subject string
 }
 
 func NewServer(dir string) *server {
