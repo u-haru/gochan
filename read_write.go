@@ -12,6 +12,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -51,7 +52,7 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				dispError(w, "keyが不正です!")
 				return
 			}
-			board.InitThread(key)
+			board.NewThread(key)
 			if v, ok := board.Threads[key]; ok {
 				v.Title = res.Subject
 			}
@@ -86,18 +87,11 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 
-		date_id := strings.Replace(res.Date.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[res.Date.Weekday()], 1) + " ID:" + string(res.ID[:]) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
-		outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
-
 		if board.Threads[key].num >= board.Config.threadMaxRes {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 			return
 		} else {
-			board.Threads[key].lock.Lock()
-			board.Threads[key].Dat += outdat
-			board.Threads[key].num++
-			board.Threads[key].lastmod = res.Date
-			board.Threads[key].lock.Unlock()
+			board.Threads[key].NewRes(res)
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
@@ -115,7 +109,6 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 }
 
 func (bd *board) refresh_subjects() {
-	// subjects := map[string]string{} //マップ
 	type str struct {
 		key     string
 		title   string
@@ -135,12 +128,10 @@ func (bd *board) refresh_subjects() {
 		return subs[i].lastmod.After(subs[j].lastmod)
 	}) // ソート
 
-	tmp := ""
+	bd.Subject = ""
 	for _, k := range subs {
-		tmp += k.key + ".dat<>" + k.title + "\n"
+		bd.Subject += k.key + ".dat<>" + k.title + "\n"
 	}
-
-	bd.Subject = tmp
 }
 
 // 8バイトのランダムな値+1バイトの"0"を返す
@@ -183,7 +174,9 @@ func (sv *server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	if val, ok := sv.Boards[bbs]; ok {
 		if val, ok := val.Threads[key]; ok {
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
-			fmt.Fprint(w, toSJIS(val.Dat))
+			val.lock.RLock()
+			fmt.Fprint(w, toSJIS(val.dat))
+			val.lock.RUnlock()
 		}
 	}
 }
@@ -236,8 +229,8 @@ func (sv *server) NewBoard(bbs, title string) {
 	bd.Config.Raw["BBS_MESSAGE_MAXLEN"] = "2048"
 	bd.Config.Raw["BBS_SUBJECT_MAXLEN"] = "30"
 
-	sv.reloadSettings(bbs)
-	sv.saveSettings(bbs)
+	sv.Boards[bbs].reloadSettings()
+	sv.Boards[bbs].saveSettings()
 }
 
 func (sv *server) DeleteBoard(bbs string) {
@@ -247,6 +240,13 @@ func (sv *server) DeleteBoard(bbs string) {
 	}
 }
 
+func (bd *board) NewThread(key string) *thread {
+	th := &thread{}
+	th.lock = sync.RWMutex{}
+	bd.Threads[key] = th
+	return th
+}
+
 func (bd *board) DeleteThread(bbs, key string) {
 	os.Remove(bd.server.Dir + "/" + bbs + "/dat/" + key + ".dat")
 	if _, ok := bd.Threads[key]; ok {
@@ -254,12 +254,22 @@ func (bd *board) DeleteThread(bbs, key string) {
 	}
 }
 
-func (th *thread) DeleteRes(bbs string, key string, num int) {
-	tmp := strings.Split(th.Dat, "\n")
+func (th *thread) NewRes(res *Res) {
+	date_id := strings.Replace(res.Date.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[res.Date.Weekday()], 1) + " ID:" + string(res.ID[:]) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
+	outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
+	th.lock.Lock()
+	th.dat += outdat
+	th.num++
+	th.lastmod = res.Date
+	th.lock.Unlock()
+}
+
+func (th *thread) DeleteRes(num int) {
+	tmp := strings.Split(th.dat, "\n")
 	if len(tmp) >= num {
 		targetres := tmp[num-1]
 		tmp := strings.Split(targetres, "<>")
 		replaceres := "あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4]
-		strings.Replace(th.Dat, targetres, replaceres, 1)
+		strings.Replace(th.dat, targetres, replaceres, 1)
 	}
 }
