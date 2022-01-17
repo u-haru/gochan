@@ -38,7 +38,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	res.Message = escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
 	res.Date = time.Now()
 
-	if board, ok := sv.Boards[bbs]; !ok {
+	if board, ok := sv.boards[bbs]; !ok {
 		dispError(w, "bbsが不正です!")
 		return
 	} else {
@@ -48,21 +48,21 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				dispError(w, "タイトルが長すぎます!")
 				return
 			}
-			if _, ok := board.Threads[key]; ok { //すでに同じキーのスレがあったら
+			if _, ok := board.threads[key]; ok { //すでに同じキーのスレがあったら
 				dispError(w, "keyが不正です!")
 				return
 			}
 			board.NewThread(key)
-			if v, ok := board.Threads[key]; ok {
-				v.Title = res.Subject
+			if v, ok := board.threads[key]; ok {
+				v.title = res.Subject
 			}
 		} else {
-			if _, ok := board.Threads[key]; !ok {
+			if _, ok := board.threads[key]; !ok {
 				dispError(w, "keyが不正です!")
 				return
 			}
 		}
-		res.Thread = board.Threads[key]
+		res.thread = board.threads[key]
 		res.Log.Host = r.RemoteAddr
 		res.Log.UA = r.UserAgent()
 		if res.From == "" {
@@ -90,11 +90,11 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 
-		if board.Threads[key].Num >= board.Config.threadMaxRes {
+		if board.threads[key].num >= board.Config.threadMaxRes {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 			return
 		} else {
-			board.Threads[key].NewRes(res)
+			board.threads[key].NewRes(res)
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
@@ -119,10 +119,10 @@ func (bd *board) refresh_subjects() {
 	}
 	subs := []str{}
 
-	for i, v := range bd.Threads {
+	for i, v := range bd.threads {
 		subs = append(subs, str{
 			key:     i,
-			title:   v.Title,
+			title:   v.title,
 			lastmod: v.lastmod,
 		})
 	}
@@ -131,9 +131,9 @@ func (bd *board) refresh_subjects() {
 		return subs[i].lastmod.After(subs[j].lastmod)
 	}) // ソート
 
-	bd.Subject = ""
+	bd.subject = ""
 	for _, k := range subs {
-		bd.Subject += k.key + ".dat<>" + k.title + "\n"
+		bd.subject += k.key + ".dat<>" + k.title + "\n"
 	}
 }
 
@@ -174,8 +174,8 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	}
 	key := strs[2][:dotpos]
 
-	if val, ok := sv.Boards[bbs]; ok {
-		if val, ok := val.Threads[key]; ok {
+	if val, ok := sv.boards[bbs]; ok {
+		if val, ok := val.threads[key]; ok {
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 			val.lock.RLock()
 			fmt.Fprint(w, toSJIS(val.dat))
@@ -189,8 +189,8 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	path = strings.TrimSuffix(path, "/")
 	bbs := strings.Split(path, "/")[0]
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
-	if bd, ok := sv.Boards[bbs]; ok {
-		stream_toSJIS(strings.NewReader(bd.Subject), w)
+	if bd, ok := sv.boards[bbs]; ok {
+		stream_toSJIS(strings.NewReader(bd.subject), w)
 	} else {
 		dispError(w, "bbsが不正です!")
 	}
@@ -232,30 +232,30 @@ func (sv *Server) NewBoard(bbs, title string) {
 	bd.Config.Raw["BBS_MESSAGE_MAXLEN"] = "2048"
 	bd.Config.Raw["BBS_SUBJECT_MAXLEN"] = "30"
 
-	sv.Boards[bbs].reloadSettings()
-	sv.Boards[bbs].saveSettings()
+	sv.boards[bbs].reloadSettings()
+	sv.boards[bbs].saveSettings()
 }
 
 func (sv *Server) DeleteBoard(bbs string) {
 	os.Remove(sv.Dir + "/" + bbs)
-	if _, ok := sv.Boards[bbs]; ok {
-		delete(sv.Boards, bbs)
+	if _, ok := sv.boards[bbs]; ok {
+		delete(sv.boards, bbs)
 	}
 }
 
 func (bd *board) NewThread(key string) *thread {
 	th := &thread{}
 	th.lock = sync.RWMutex{}
-	th.Key = key
-	th.Board = bd
-	bd.Threads[key] = th
+	th.key = key
+	th.board = bd
+	bd.threads[key] = th
 	return th
 }
 
 func (bd *board) DeleteThread(bbs, key string) {
 	os.Remove(bd.server.Dir + "/" + bbs + "/dat/" + key + ".dat")
-	if _, ok := bd.Threads[key]; ok {
-		delete(bd.Threads, key)
+	if _, ok := bd.threads[key]; ok {
+		delete(bd.threads, key)
 	}
 }
 
@@ -264,7 +264,7 @@ func (th *thread) NewRes(res *Res) {
 	outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
 	th.lock.Lock()
 	th.dat += outdat
-	th.Num++
+	th.num++
 	th.lastmod = res.Date
 	th.lock.Unlock()
 }

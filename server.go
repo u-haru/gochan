@@ -18,7 +18,7 @@ import (
 type Server struct {
 	Dir    string
 	Host   string
-	Boards map[string]*board
+	boards map[string]*board
 	Config struct {
 		Location string
 	}
@@ -33,8 +33,8 @@ type Server struct {
 }
 
 type board struct {
-	BBS     string
-	Threads map[string]*thread
+	bbs     string
+	threads map[string]*thread
 	Config  struct {
 		Raw           map[string]string
 		threadMaxRes  uint
@@ -42,19 +42,19 @@ type board struct {
 		subjectMaxLen uint
 		noName        string
 	}
-	Subject string
+	subject string
 	server  *Server
 	// Index    *template.Template
 }
 
 type thread struct {
-	Key     string
+	key     string
 	lock    sync.RWMutex
-	Title   string
+	title   string
 	dat     string
-	Num     uint
+	num     uint
 	lastmod time.Time
-	Board   *board
+	board   *board
 }
 
 type Res struct {
@@ -62,7 +62,7 @@ type Res struct {
 	ID                           [9]byte
 	Date                         time.Time
 
-	Thread *thread
+	thread *thread
 	Log    struct {
 		Host string
 		UA   string
@@ -71,7 +71,7 @@ type Res struct {
 
 func (sv *Server) InitServer() *Server {
 	sv.Dir = filepath.Clean(sv.Dir)
-	sv.Boards = map[string]*board{}
+	sv.boards = map[string]*board{}
 	bds := searchboards(sv.Dir)
 
 	if sv.Config.Location == "" {
@@ -86,17 +86,17 @@ func (sv *Server) InitServer() *Server {
 	for _, bbs := range bds { //板情報読み取り
 		log.Println("board found: " + bbs)
 		sv.initBoard(bbs)
-		sv.Boards[bbs].readSettings()
+		sv.boards[bbs].readSettings()
 
 		keys := searchdats(sv.Dir + "/" + bbs + "/dat")
 		for _, key := range keys { //スレ情報読み込み
-			sv.Boards[bbs].NewThread(key)
-			sv.Boards[bbs].Threads[key].dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
-			sv.Boards[bbs].Threads[key].Num = uint(strings.Count(sv.Boards[bbs].Threads[key].dat, "\n"))
-			tmp := strings.Split(sv.Boards[bbs].Threads[key].dat, "\n")
-			sv.Boards[bbs].Threads[key].Title = strings.Split(tmp[0], "<>")[4]
-			sv.Boards[bbs].Threads[key].Key = key
-			sv.Boards[bbs].Threads[key].Board = sv.Boards[bbs]
+			sv.boards[bbs].NewThread(key)
+			sv.boards[bbs].threads[key].dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+			sv.boards[bbs].threads[key].num = uint(strings.Count(sv.boards[bbs].threads[key].dat, "\n"))
+			tmp := strings.Split(sv.boards[bbs].threads[key].dat, "\n")
+			sv.boards[bbs].threads[key].title = strings.Split(tmp[0], "<>")[4]
+			sv.boards[bbs].threads[key].key = key
+			sv.boards[bbs].threads[key].board = sv.boards[bbs]
 
 			lastkakikomidate := strings.Split(tmp[len(tmp)-2], "<>")[2] //-2なのは最後が空行で終わるから
 			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
@@ -105,7 +105,7 @@ func (sv *Server) InitServer() *Server {
 			if err != nil {
 				log.Println(err)
 			} else {
-				sv.Boards[bbs].Threads[key].lastmod = t
+				sv.boards[bbs].threads[key].lastmod = t
 			}
 		}
 	}
@@ -118,12 +118,12 @@ func (sv *Server) InitServer() *Server {
 }
 
 func (sv *Server) initBoard(bbs string) *board {
-	bd := &board{Threads: map[string]*thread{}}
+	bd := &board{threads: map[string]*thread{}}
 	bd.Config.Raw = map[string]string{}
 	bd.server = sv
-	bd.BBS = bbs
+	bd.bbs = bbs
 	bd.loadsubject()
-	sv.Boards[bbs] = bd
+	sv.boards[bbs] = bd
 	return bd
 }
 
@@ -195,8 +195,8 @@ func exists(name string) bool {
 }
 
 func (sv *Server) Saver() {
-	for bbs, b := range sv.Boards {
-		for key, t := range b.Threads {
+	for bbs, b := range sv.boards {
+		for key, t := range b.threads {
 			path := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
 			dat, err := os.Create(path)
 			if err != nil {
@@ -221,7 +221,7 @@ func (sv *Server) Saver() {
 }
 
 func (bd *board) loadsubject() {
-	datpath := bd.server.Dir + "/" + bd.BBS + "/dat/"
+	datpath := bd.server.Dir + "/" + bd.bbs + "/dat/"
 	files, err := os.ReadDir(filepath.Clean(datpath))
 	if err != nil {
 		log.Fatal(err)
@@ -250,11 +250,11 @@ func (bd *board) loadsubject() {
 			subjects += file.Name() + "<>" + tmp[4] + " (" + fmt.Sprintf("%d", num) + ")\n"
 		}
 	}
-	bd.Subject = subjects
+	bd.subject = subjects
 }
 
 func (bd *board) saveSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.BBS + "/setting.txt")
+	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.txt")
 	file, err := os.Create(path)
 	if err != nil {
 		log.Println(err)
@@ -266,7 +266,7 @@ func (bd *board) saveSettings() {
 }
 
 func (bd *board) readSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.BBS + "/setting.txt")
+	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.txt")
 	txt := readalltxt(path)
 	buf := bytes.NewBufferString(toUTF(txt))
 	scanner := bufio.NewScanner(buf)
@@ -327,4 +327,25 @@ func (bd *board) reloadSettings() {
 			bd.Config.subjectMaxLen = uint(val)
 		}
 	}
+}
+
+func (bd *board) BBS() string {
+	return bd.bbs
+}
+
+func (th *thread) Key() string {
+	return th.key
+}
+func (th *thread) Title() string {
+	return th.title
+}
+func (th *thread) Num() uint {
+	return th.num
+}
+func (th *thread) Board() *board {
+	return th.board
+}
+
+func (rs *Res) Thread() *thread {
+	return rs.thread
 }
