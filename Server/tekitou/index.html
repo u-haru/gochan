@@ -32,7 +32,7 @@
         let list = document.getElementById("thread_list")
 
         let key = dat.toString().split(".")[0]
-        xhr.open('GET', "./dat/" + dat);
+        xhr.open('GET', "./dat/" + dat, false);
         xhr.setRequestHeader('cache-control', 'no-cache, must-revalidate, post-check=0, pre-check=0');
         xhr.setRequestHeader('cache-control', 'max-age=0');
         xhr.setRequestHeader('expires', '0');
