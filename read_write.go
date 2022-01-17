@@ -27,7 +27,7 @@ var escape = strings.NewReplacer(
 
 var wdays = []string{"日", "月", "火", "水", "木", "金", "土"}
 
-func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
+func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
 	bbs := toUTF(r.PostFormValue("bbs"))
 	key := toUTF(r.PostFormValue("key"))
 
@@ -62,6 +62,9 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				return
 			}
 		}
+		res.Thread = board.Threads[key]
+		res.Log.Host = r.RemoteAddr
+		res.Log.UA = r.UserAgent()
 		if res.From == "" {
 			res.From = board.Config.noName
 		}
@@ -114,7 +117,7 @@ func (bd *board) refresh_subjects() {
 		title   string
 		lastmod time.Time
 	}
-	var subs []str
+	subs := []str{}
 
 	for i, v := range bd.Threads {
 		subs = append(subs, str{
@@ -124,14 +127,19 @@ func (bd *board) refresh_subjects() {
 		})
 	}
 
+	fmt.Println(subs)
 	sort.Slice(subs, func(i, j int) bool {
 		return subs[i].lastmod.After(subs[j].lastmod)
 	}) // ソート
-
+	fmt.Println(subs)
+	// for _, v := range subs {
+	// 	fmt.Println(v.title, v.lastmod.Format("2006-01-02 15:04:05.00"))
+	// }
 	bd.Subject = ""
 	for _, k := range subs {
 		bd.Subject += k.key + ".dat<>" + k.title + "\n"
 	}
+	// log.Println(bd.Subject)
 }
 
 // 8バイトのランダムな値+1バイトの"0"を返す
@@ -155,7 +163,7 @@ func GenerateID(remote string) [9]byte {
 	return b
 }
 
-func (sv *server) dat(w http.ResponseWriter, r *http.Request) { //dat
+func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	strs := strings.Split(path, "/")
@@ -181,7 +189,7 @@ func (sv *server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	}
 }
 
-func (sv *server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
+func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
 	bbs := strings.Split(path, "/")[0]
@@ -216,11 +224,11 @@ func readalltxt(path string) string {
 	return string(tmp)
 }
 
-func (sv *server) NewBoard(bbs, title string) {
+func (sv *Server) NewBoard(bbs, title string) {
 	if !exists(sv.Dir + "/" + bbs) {
 		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 755)
 	}
-	bd := sv.InitBoard(bbs)
+	bd := sv.initBoard(bbs)
 	bd.Config.Raw["BBS_TITLE"] = title
 	bd.Config.Raw["BBS_TITLE_ORIG"] = title
 	bd.Config.Raw["BBS_NONAME_NAME"] = "名無しさん"
@@ -233,7 +241,7 @@ func (sv *server) NewBoard(bbs, title string) {
 	sv.Boards[bbs].saveSettings()
 }
 
-func (sv *server) DeleteBoard(bbs string) {
+func (sv *Server) DeleteBoard(bbs string) {
 	os.Remove(sv.Dir + "/" + bbs)
 	if _, ok := sv.Boards[bbs]; ok {
 		delete(sv.Boards, bbs)
@@ -243,6 +251,8 @@ func (sv *server) DeleteBoard(bbs string) {
 func (bd *board) NewThread(key string) *thread {
 	th := &thread{}
 	th.lock = sync.RWMutex{}
+	th.Key = key
+	th.Board = bd
 	bd.Threads[key] = th
 	return th
 }

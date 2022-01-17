@@ -15,12 +15,14 @@ import (
 	"time"
 )
 
-type server struct {
+type Server struct {
 	Dir    string
 	Host   string
 	Boards map[string]*board
 	Config struct {
+		Location string
 	}
+	location   *time.Location
 	httpserver *http.ServeMux
 
 	Function struct {
@@ -31,7 +33,7 @@ type server struct {
 }
 
 type board struct {
-	bbs     string
+	BBS     string
 	Threads map[string]*thread
 	Config  struct {
 		Raw           map[string]string
@@ -41,51 +43,70 @@ type board struct {
 		noName        string
 	}
 	Subject string
-	server  *server
+	server  *Server
 	// Index    *template.Template
 }
 
 type thread struct {
+	Key     string
 	lock    sync.RWMutex
 	Title   string
 	dat     string
 	num     uint
 	lastmod time.Time
-	board   *board
+	Board   *board
 }
 
 type Res struct {
 	From, Mail, Message, Subject string
 	ID                           [9]byte
 	Date                         time.Time
+
+	Thread *thread
+	Log    struct {
+		Host string
+		UA   string
+	}
 }
 
-func NewServer(dir string) *server {
-	sv := new(server)
-	sv.Dir = filepath.Clean(dir)
+func (sv *Server) InitServer() *Server {
+	sv.Dir = filepath.Clean(sv.Dir)
 	sv.Boards = map[string]*board{}
 	bds := searchboards(sv.Dir)
+
+	if sv.Config.Location == "" {
+		sv.Config.Location = "Asia/Tokyo"
+	}
+	var err error
+	sv.location, err = time.LoadLocation(sv.Config.Location)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	for _, bbs := range bds { //板情報読み取り
 		log.Println("board found: " + bbs)
-		sv.InitBoard(bbs)
+		sv.initBoard(bbs)
 		sv.Boards[bbs].readSettings()
 
 		keys := searchdats(sv.Dir + "/" + bbs + "/dat")
 		for _, key := range keys { //スレ情報読み込み
 			sv.Boards[bbs].NewThread(key)
-			sv.Boards[bbs].Threads[key].dat = toUTF(readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat"))
+			sv.Boards[bbs].Threads[key].dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
 			sv.Boards[bbs].Threads[key].num = uint(strings.Count(sv.Boards[bbs].Threads[key].dat, "\n"))
 			tmp := strings.Split(sv.Boards[bbs].Threads[key].dat, "\n")
 			sv.Boards[bbs].Threads[key].Title = strings.Split(tmp[0], "<>")[4]
+			sv.Boards[bbs].Threads[key].Key = key
+			sv.Boards[bbs].Threads[key].Board = sv.Boards[bbs]
 
 			lastkakikomidate := strings.Split(tmp[len(tmp)-2], "<>")[2] //-2なのは最後が空行で終わるから
 			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
 			lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
-			t, err := time.Parse("2006-01-02 15:04:05.00", lastkakikomidate)
+			t, err := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, sv.location)
 			if err != nil {
 				log.Println(err)
 			} else {
 				sv.Boards[bbs].Threads[key].lastmod = t
+				fmt.Println(t.Format("2006-01-02 15:04:05.00"))
 			}
 		}
 	}
@@ -97,17 +118,17 @@ func NewServer(dir string) *server {
 	return sv
 }
 
-func (sv *server) InitBoard(bbs string) *board {
+func (sv *Server) initBoard(bbs string) *board {
 	bd := &board{Threads: map[string]*thread{}}
 	bd.Config.Raw = map[string]string{}
 	bd.server = sv
-	bd.bbs = bbs
+	bd.BBS = bbs
 	bd.loadsubject()
 	sv.Boards[bbs] = bd
 	return bd
 }
 
-func (sv *server) ListenAndServe() error {
+func (sv *Server) ListenAndServe() error {
 	sv.httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
 	sv.httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/dat/") { //dat
@@ -174,7 +195,7 @@ func exists(name string) bool {
 	return !os.IsNotExist(err)
 }
 
-func (sv *server) Saver() {
+func (sv *Server) Saver() {
 	for bbs, b := range sv.Boards {
 		for key, t := range b.Threads {
 			path := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
@@ -182,7 +203,7 @@ func (sv *server) Saver() {
 			if err != nil {
 				log.Println(err)
 			}
-			dat.WriteString(toSJIS(t.dat))
+			dat.WriteString(t.dat)
 			dat.Close()
 
 			kakikomis := strings.Split(t.dat, "\n")
@@ -193,21 +214,15 @@ func (sv *server) Saver() {
 			lastkakikomidate := strings.Split(kakikomis[len(kakikomis)-2], "<>")[2] //-2なのは最後が空行で終わるから
 			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
 			lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
-			ti, _ := time.Parse("2006-01-02 15:04:05.00", lastkakikomidate)
+			ti, _ := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, sv.location)
 
 			os.Chtimes(path, ti, ti)
 		}
-		dat, err := os.Create(filepath.Clean(sv.Dir + "/" + bbs + "/subject.txt"))
-		if err != nil {
-			log.Println(err)
-		}
-		dat.WriteString(toSJIS(b.Subject))
-		dat.Close()
 	}
 }
 
 func (bd *board) loadsubject() {
-	datpath := bd.server.Dir + "/" + bd.bbs + "/dat/"
+	datpath := bd.server.Dir + "/" + bd.BBS + "/dat/"
 	files, err := os.ReadDir(filepath.Clean(datpath))
 	if err != nil {
 		log.Fatal(err)
@@ -222,11 +237,11 @@ func (bd *board) loadsubject() {
 	for _, file := range files {
 		if !file.IsDir() && strings.HasSuffix(file.Name(), ".dat") {
 			dat := readalltxt(datpath + file.Name())
-			buf := bytes.NewBufferString(toUTF(dat))
+			buf := bytes.NewBufferString(dat)
 			scanner := bufio.NewScanner(buf)
 			scanner.Scan()
 
-			num := uint(strings.Count(toUTF(string(dat)), "\n"))
+			num := uint(strings.Count(string(dat), "\n"))
 
 			tmp := strings.Split(scanner.Text(), "<>")
 			if len(tmp) < 4 {
@@ -240,7 +255,7 @@ func (bd *board) loadsubject() {
 }
 
 func (bd *board) saveSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.txt")
+	path := filepath.Clean(bd.server.Dir + "/" + bd.BBS + "/setting.txt")
 	file, err := os.Create(path)
 	if err != nil {
 		log.Println(err)
@@ -252,7 +267,7 @@ func (bd *board) saveSettings() {
 }
 
 func (bd *board) readSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.txt")
+	path := filepath.Clean(bd.server.Dir + "/" + bd.BBS + "/setting.txt")
 	txt := readalltxt(path)
 	buf := bytes.NewBufferString(toUTF(txt))
 	scanner := bufio.NewScanner(buf)
