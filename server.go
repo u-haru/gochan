@@ -24,7 +24,7 @@ type server struct {
 	httpserver *http.ServeMux
 
 	Function struct {
-		IDGenerator func(string) []byte
+		IDGenerator func(string) [9]byte
 		// NGとか
 		MessageChecker func(*Res) (bool, string) //res (ok,reason)
 	}
@@ -56,6 +56,8 @@ type thread struct {
 
 type Res struct {
 	From, Mail, Message, Subject string
+	ID                           [9]byte
+	Date                         time.Time
 }
 
 func NewServer(dir string) *server {

@@ -27,21 +27,23 @@ var escape = strings.NewReplacer(
 var wdays = []string{"日", "月", "火", "水", "木", "金", "土"}
 
 func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
-	subject := escape.Replace(toUTF(r.PostFormValue("subject")))
-	from := escape.Replace(toUTF(r.PostFormValue("FROM")))
-	mail := escape.Replace(toUTF(r.PostFormValue("mail")))
 	bbs := toUTF(r.PostFormValue("bbs"))
 	key := toUTF(r.PostFormValue("key"))
-	now := time.Now()
-	message := escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
+
+	res := &Res{}
+	res.Subject = escape.Replace(toUTF(r.PostFormValue("subject")))
+	res.From = escape.Replace(toUTF(r.PostFormValue("FROM")))
+	res.Mail = escape.Replace(toUTF(r.PostFormValue("mail")))
+	res.Message = escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
+	res.Date = time.Now()
 
 	if board, ok := sv.Boards[bbs]; !ok {
 		dispError(w, "bbsが不正です!")
 		return
 	} else {
-		if subject != "" { //subjectがあれば新規スレ
-			key = fmt.Sprintf("%d", now.Unix())
-			if uint(len(subject)) > board.Config.subjectMaxLen {
+		if res.Subject != "" { //subjectがあれば新規スレ
+			key = fmt.Sprintf("%d", res.Date.Unix())
+			if uint(len(res.Subject)) > board.Config.subjectMaxLen {
 				dispError(w, "タイトルが長すぎます!")
 				return
 			}
@@ -51,7 +53,7 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 			board.InitThread(key)
 			if v, ok := board.Threads[key]; ok {
-				v.Title = subject
+				v.Title = res.Subject
 			}
 		} else {
 			if _, ok := board.Threads[key]; !ok {
@@ -59,37 +61,33 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				return
 			}
 		}
-		if from == "" {
-			from = board.Config.noName
+		if res.From == "" {
+			res.From = board.Config.noName
 		}
-		if uint(len(message)) > board.Config.messageMaxLen {
+		if uint(len(res.Message)) > board.Config.messageMaxLen {
 			dispError(w, "本文が長すぎます!")
 			return
 		}
-		if message == "" {
+		if res.Message == "" {
 			dispError(w, "本文が空です!")
 			return
 		}
 
+		if sv.Function.IDGenerator != nil { // もしID生成器が別で指定されていれば
+			res.ID = sv.Function.IDGenerator(r.RemoteAddr)
+		} else {
+			res.ID = GenerateID(r.RemoteAddr) // ID生成
+		}
+
 		if sv.Function.MessageChecker != nil {
-			res := &Res{from, mail, message, subject}
 			if ok, reason := sv.Function.MessageChecker(res); !ok {
 				dispError(w, reason)
 				return
-			} else {
-				from = res.From
-				mail = res.Mail
-				message = res.Message
-				subject = res.Subject
 			}
 		}
 
-		id := GenerateID(r.RemoteAddr)      // ID生成
-		if sv.Function.IDGenerator != nil { // もしID生成器が別で指定されていれば
-			id = sv.Function.IDGenerator(r.RemoteAddr)
-		}
-		date_id := strings.Replace(now.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[now.Weekday()], 1) + " ID:" + string(id) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
-		outdat := from + "<>" + mail + "<>" + date_id + "<>" + message + "<>" + subject + "\n"                                    // 吐き出すDat
+		date_id := strings.Replace(res.Date.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[res.Date.Weekday()], 1) + " ID:" + string(res.ID[:]) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
+		outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
 
 		if board.Threads[key].num >= board.Config.threadMaxRes {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
@@ -98,7 +96,7 @@ func (sv *server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			board.Threads[key].lock.Lock()
 			board.Threads[key].Dat += outdat
 			board.Threads[key].num++
-			board.Threads[key].lastmod = now
+			board.Threads[key].lastmod = res.Date
 			board.Threads[key].lock.Unlock()
 		}
 
@@ -146,7 +144,7 @@ func (bd *board) refresh_subjects() {
 }
 
 // 8バイトのランダムな値+1バイトの"0"を返す
-func GenerateID(remote string) []byte {
+func GenerateID(remote string) [9]byte {
 	now := time.Now()
 	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
 	h := md5.New()
@@ -157,7 +155,7 @@ func GenerateID(remote string) []byte {
 
 	const rs2Letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/"
 
-	b := make([]byte, 9) //id[8] + 末尾
+	b := [9]byte{}
 	for i := 0; i < 8; i++ {
 		b[i] = rs2Letters[rn.Intn(len(rs2Letters))]
 	}
