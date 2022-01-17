@@ -24,7 +24,7 @@ func main() {
 	Server := &gochan.Server{}
 	Server.Dir = Dir
 	Server.Host = Host
-	Server.Config.Location = "Asia/Tokyo"
+	Server.SetLocation("Asia/Tokyo")
 	Server.Function.MessageChecker = messageChecker
 
 	Server.InitServer()
@@ -56,7 +56,7 @@ func messageChecker(res *gochan.Res) (bool, string) {
 
 	f, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
-		_, err := f.WriteString(fmt.Sprintf("[%s] %s/%s(Title: %s)\n\t%d.%s %s(Mail: %s) :%s\n\tHost:%s\tUA:%s",
+		_, err := f.WriteString(fmt.Sprintf("[%s] %s/%s(Title: %s)\n\t%d.%s %s(Mail: %s) :%s\n\tHost:%s\tUA:%s\n",
 			res.Date.Format("2006-01-02 15:04:05.00"),
 			res.Thread().Board().BBS(),
 			res.Thread().Key(),

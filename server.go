@@ -19,9 +19,7 @@ type Server struct {
 	Dir    string
 	Host   string
 	boards map[string]*board
-	Config struct {
-		Location string
-	}
+
 	location   *time.Location
 	httpserver *http.ServeMux
 
@@ -73,14 +71,8 @@ func (sv *Server) InitServer() *Server {
 	sv.Dir = filepath.Clean(sv.Dir)
 	sv.boards = map[string]*board{}
 	bds := searchboards(sv.Dir)
-
-	if sv.Config.Location == "" {
-		sv.Config.Location = "Asia/Tokyo"
-	}
-	var err error
-	sv.location, err = time.LoadLocation(sv.Config.Location)
-	if err != nil {
-		log.Fatal(err)
+	if sv.location == nil {
+		sv.SetLocation("Asia/Tokyo")
 	}
 
 	for _, bbs := range bds { //板情報読み取り
@@ -115,6 +107,12 @@ func (sv *Server) InitServer() *Server {
 	}
 	sv.httpserver = http.NewServeMux()
 	return sv
+}
+
+func (sv *Server) SetLocation(loc string) error {
+	var err error
+	sv.location, err = time.LoadLocation(loc)
+	return err
 }
 
 func (sv *Server) initBoard(bbs string) *board {
