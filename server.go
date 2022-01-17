@@ -52,7 +52,7 @@ type thread struct {
 	lock    sync.RWMutex
 	Title   string
 	dat     string
-	num     uint
+	Num     uint
 	lastmod time.Time
 	Board   *board
 }
@@ -92,7 +92,7 @@ func (sv *Server) InitServer() *Server {
 		for _, key := range keys { //スレ情報読み込み
 			sv.Boards[bbs].NewThread(key)
 			sv.Boards[bbs].Threads[key].dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
-			sv.Boards[bbs].Threads[key].num = uint(strings.Count(sv.Boards[bbs].Threads[key].dat, "\n"))
+			sv.Boards[bbs].Threads[key].Num = uint(strings.Count(sv.Boards[bbs].Threads[key].dat, "\n"))
 			tmp := strings.Split(sv.Boards[bbs].Threads[key].dat, "\n")
 			sv.Boards[bbs].Threads[key].Title = strings.Split(tmp[0], "<>")[4]
 			sv.Boards[bbs].Threads[key].Key = key

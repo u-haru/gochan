@@ -90,7 +90,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 
-		if board.Threads[key].num >= board.Config.threadMaxRes {
+		if board.Threads[key].Num >= board.Config.threadMaxRes {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 			return
 		} else {
@@ -264,7 +264,7 @@ func (th *thread) NewRes(res *Res) {
 	outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
 	th.lock.Lock()
 	th.dat += outdat
-	th.num++
+	th.Num++
 	th.lastmod = res.Date
 	th.lock.Unlock()
 }

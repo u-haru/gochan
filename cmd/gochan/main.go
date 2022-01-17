@@ -56,10 +56,11 @@ func messageChecker(res *gochan.Res) (bool, string) {
 
 	f, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
-		_, err := f.WriteString(fmt.Sprintf("[%s]%s/%s(%s) \n\t> %s %s(%s) %s\n\tHost:%s UA:%s", res.Date.Format("2006-01-02 15:04:05.00"),
+		_, err := f.WriteString(fmt.Sprintf("[%s] %s/%s(Title: %s)\n\t%d.%s %s(Mail: %s) :%s\n\tHost:%s\tUA:%s", res.Date.Format("2006-01-02 15:04:05.00"),
 			res.Thread.Board.BBS,
 			res.Thread.Key,
 			res.Thread.Title,
+			res.Thread.Num+1,
 			res.From, res.ID,
 			res.Mail, res.Message,
 			res.Log.Host, res.Log.UA))
