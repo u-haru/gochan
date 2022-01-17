@@ -3,6 +3,8 @@ package gochan
 import (
 	"crypto/md5"
 	"encoding/binary"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -115,6 +118,7 @@ func (bd *board) refresh_subjects() {
 	type str struct {
 		key     string
 		title   string
+		num     uint
 		lastmod time.Time
 	}
 	subs := []str{}
@@ -123,6 +127,7 @@ func (bd *board) refresh_subjects() {
 		subs = append(subs, str{
 			key:     i,
 			title:   v.title,
+			num:     v.num,
 			lastmod: v.lastmod,
 		})
 	}
@@ -133,7 +138,7 @@ func (bd *board) refresh_subjects() {
 
 	bd.subject = ""
 	for _, k := range subs {
-		bd.subject += k.key + ".dat<>" + k.title + "\n"
+		bd.subject += k.key + ".dat<>" + k.title + " (" + fmt.Sprintf("%d", k.num) + ")\n"
 	}
 }
 
@@ -174,12 +179,12 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	}
 	key := strs[2][:dotpos]
 
-	if val, ok := sv.boards[bbs]; ok {
-		if val, ok := val.threads[key]; ok {
+	if bd, ok := sv.boards[bbs]; ok {
+		if th, ok := bd.threads[key]; ok {
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
-			val.lock.RLock()
-			fmt.Fprint(w, toSJIS(val.dat))
-			val.lock.RUnlock()
+			th.lock.RLock()
+			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(toSJIS(th.dat))) //回数多いためServeContentでキャッシュ保存
+			th.lock.RUnlock()
 		}
 	}
 }
@@ -236,11 +241,13 @@ func (sv *Server) NewBoard(bbs, title string) {
 	sv.boards[bbs].saveSettings()
 }
 
-func (sv *Server) DeleteBoard(bbs string) {
-	os.Remove(sv.Dir + "/" + bbs)
-	if _, ok := sv.boards[bbs]; ok {
-		delete(sv.boards, bbs)
+func (sv *Server) DeleteBoard(bbs string) error {
+	os.RemoveAll(sv.Dir + "/" + bbs)
+	if _, ok := sv.boards[bbs]; !ok {
+		return errors.New("No such board")
 	}
+	delete(sv.boards, bbs)
+	return nil
 }
 
 func (bd *board) NewThread(key string) *thread {
@@ -252,11 +259,13 @@ func (bd *board) NewThread(key string) *thread {
 	return th
 }
 
-func (bd *board) DeleteThread(bbs, key string) {
-	os.Remove(bd.server.Dir + "/" + bbs + "/dat/" + key + ".dat")
-	if _, ok := bd.threads[key]; ok {
-		delete(bd.threads, key)
+func (bd *board) DeleteThread(key string) error {
+	os.Remove(bd.server.Dir + "/" + bd.bbs + "/dat/" + key + ".dat")
+	if _, ok := bd.threads[key]; !ok {
+		return errors.New("No such thread")
 	}
+	delete(bd.threads, key)
+	return nil
 }
 
 func (th *thread) NewRes(res *Res) {
@@ -269,12 +278,102 @@ func (th *thread) NewRes(res *Res) {
 	th.lock.Unlock()
 }
 
-func (th *thread) DeleteRes(num int) {
+func (th *thread) DeleteRes(num int) error {
 	tmp := strings.Split(th.dat, "\n")
-	if len(tmp) >= num {
-		targetres := tmp[num-1]
-		tmp := strings.Split(targetres, "<>")
-		replaceres := "あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4]
-		strings.Replace(th.dat, targetres, replaceres, 1)
+	if len(tmp) < num {
+		return errors.New("No such res")
+	}
+	targetres := tmp[num-1]
+	tmp = strings.Split(targetres, "<>")
+	replaceres := "あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4]
+	th.lock.Lock()
+	th.dat = strings.Replace(th.dat, targetres, replaceres, 1)
+	th.lock.Unlock()
+	return nil
+}
+
+func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
+	var stat struct {
+		Status string      `json:"status,omitempty"`
+		Reason string      `json:"reason,omitempty"`
+		Data   interface{} `json:"data,omitempty"`
+	}
+	bbs := escape.Replace(r.FormValue("bbs"))
+	key := escape.Replace(r.FormValue("key"))
+	boardname := escape.Replace(r.FormValue("boardname"))
+
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/newBoard"):
+		{
+			sv.NewBoard(bbs, boardname)
+			stat.Status = "Success"
+		}
+	case strings.HasSuffix(r.URL.Path, "/boardList"):
+		{
+			type bd struct {
+				BBS   string `json:"bbs,omitempty"`
+				Title string `json:"title,omitempty"`
+			}
+			var boards []bd
+			for _, v := range sv.boards {
+				boards = append(boards, bd{
+					BBS:   v.bbs,
+					Title: v.Config.title,
+				})
+			}
+			stat.Status = "Success"
+			stat.Data = boards
+		}
+	case strings.HasSuffix(r.URL.Path, "/deleteBoard"):
+		{
+			if err := sv.DeleteBoard(bbs); err == nil {
+				stat.Status = "Success"
+			} else {
+				stat.Status = "Failed"
+				stat.Reason = err.Error()
+			}
+		}
+	case strings.HasSuffix(r.URL.Path, "/deleteThread"):
+		{
+			if bd, ok := sv.boards[bbs]; ok {
+				if err := bd.DeleteThread(key); err == nil {
+					stat.Status = "Success"
+				} else {
+					stat.Status = "Failed"
+					stat.Reason = err.Error()
+				}
+			} else {
+				stat.Status = "Failed"
+				stat.Reason = "No such thread"
+			}
+		}
+	case strings.HasSuffix(r.URL.Path, "/deleteRes"):
+		{
+			resnum, err := strconv.Atoi(escape.Replace(r.FormValue("resnum")))
+			if err != nil {
+				stat.Status = "Failed"
+				stat.Reason = "Invalid resnum"
+			} else if bd, ok := sv.boards[bbs]; !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such board"
+			} else if th, ok := bd.threads[key]; !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such thread"
+			} else {
+				if err := th.DeleteRes(resnum); err == nil {
+					stat.Status = "Success"
+				} else {
+					stat.Status = "Failed"
+					stat.Reason = err.Error()
+				}
+			}
+		}
+	default:
+		{
+			http.ServeFile(w, r, sv.Dir+r.URL.Path)
+		}
+	}
+	if stat.Status != "" {
+		json.NewEncoder(w).Encode(stat)
 	}
 }

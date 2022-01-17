@@ -35,6 +35,7 @@ type board struct {
 	threads map[string]*thread
 	Config  struct {
 		Raw           map[string]string
+		title         string
 		threadMaxRes  uint
 		messageMaxLen uint
 		subjectMaxLen uint
@@ -127,6 +128,7 @@ func (sv *Server) initBoard(bbs string) *board {
 
 func (sv *Server) ListenAndServe() error {
 	sv.httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
+	sv.httpserver.HandleFunc("/admin/", sv.AdminAPI)
 	sv.httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/dat/") { //dat
 			sv.dat(w, r)
@@ -288,6 +290,15 @@ func (bd *board) reloadSettings() {
 		bd.Config.noName = "名無し"
 	} else {
 		bd.Config.noName = val
+	}
+
+	//タイトル
+	if val, ok := bd.Config.Raw["BBS_TITLE"]; !ok {
+		if val, ok = bd.Config.Raw["BBS_TITLE_ORIG"]; !ok {
+			bd.Config.title = "NoTitle"
+		}
+	} else {
+		bd.Config.title = val
 	}
 
 	//スレストまでのレス数
