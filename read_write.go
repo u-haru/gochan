@@ -127,19 +127,14 @@ func (bd *board) refresh_subjects() {
 		})
 	}
 
-	fmt.Println(subs)
 	sort.Slice(subs, func(i, j int) bool {
 		return subs[i].lastmod.After(subs[j].lastmod)
 	}) // ソート
-	fmt.Println(subs)
-	// for _, v := range subs {
-	// 	fmt.Println(v.title, v.lastmod.Format("2006-01-02 15:04:05.00"))
-	// }
+
 	bd.Subject = ""
 	for _, k := range subs {
 		bd.Subject += k.key + ".dat<>" + k.title + "\n"
 	}
-	// log.Println(bd.Subject)
 }
 
 // 8バイトのランダムな値+1バイトの"0"を返す

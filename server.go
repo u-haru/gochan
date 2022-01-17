@@ -106,7 +106,6 @@ func (sv *Server) InitServer() *Server {
 				log.Println(err)
 			} else {
 				sv.Boards[bbs].Threads[key].lastmod = t
-				fmt.Println(t.Format("2006-01-02 15:04:05.00"))
 			}
 		}
 	}
