@@ -182,6 +182,7 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	if bd, ok := sv.boards[bbs]; ok {
 		if th, ok := bd.threads[key]; ok {
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
+			w.Header().Set("Cache-Control", "no-cache") //last-modified等で確認取れない限り再取得
 			th.lock.RLock()
 			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(toSJIS(th.dat))) //回数多いためServeContentでキャッシュ保存
 			th.lock.RUnlock()
@@ -194,6 +195,7 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	path = strings.TrimSuffix(path, "/")
 	bbs := strings.Split(path, "/")[0]
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
+	w.Header().Set("Cache-Control", "no-cache")
 	if bd, ok := sv.boards[bbs]; ok {
 		stream_toSJIS(strings.NewReader(bd.subject), w)
 	} else {
@@ -265,6 +267,7 @@ func (bd *board) DeleteThread(key string) error {
 		return errors.New("No such thread")
 	}
 	delete(bd.threads, key)
+	bd.refresh_subjects()
 	return nil
 }
 
@@ -288,6 +291,7 @@ func (th *thread) DeleteRes(num int) error {
 	replaceres := "あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4]
 	th.lock.Lock()
 	th.dat = strings.Replace(th.dat, targetres, replaceres, 1)
+	th.lastmod = time.Now()
 	th.lock.Unlock()
 	return nil
 }
@@ -298,9 +302,9 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 		Reason string      `json:"reason,omitempty"`
 		Data   interface{} `json:"data,omitempty"`
 	}
-	bbs := escape.Replace(r.FormValue("bbs"))
-	key := escape.Replace(r.FormValue("key"))
-	boardname := escape.Replace(r.FormValue("boardname"))
+	bbs := escape.Replace(r.PostFormValue("bbs"))
+	key := escape.Replace(r.PostFormValue("key"))
+	boardname := escape.Replace(r.PostFormValue("boardname"))
 
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/newBoard"):
@@ -349,7 +353,7 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 		}
 	case strings.HasSuffix(r.URL.Path, "/deleteRes"):
 		{
-			resnum, err := strconv.Atoi(escape.Replace(r.FormValue("resnum")))
+			resnum, err := strconv.Atoi(r.PostFormValue("resnum"))
 			if err != nil {
 				stat.Status = "Failed"
 				stat.Reason = "Invalid resnum"
