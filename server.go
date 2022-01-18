@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -47,13 +47,14 @@ type board struct {
 }
 
 type thread struct {
-	key     string
-	lock    sync.RWMutex
-	title   string
-	dat     string
-	num     uint
-	lastmod time.Time
-	board   *board
+	key      string
+	lock     sync.RWMutex
+	title    string
+	dat      string
+	num      uint
+	firstmod time.Time
+	lastmod  time.Time
+	board    *board
 }
 
 type Res struct {
@@ -91,16 +92,17 @@ func (sv *Server) InitServer() *Server {
 			sv.boards[bbs].threads[key].key = key
 			sv.boards[bbs].threads[key].board = sv.boards[bbs]
 
-			lastkakikomidate := strings.Split(tmp[len(tmp)-2], "<>")[2] //-2なのは最後が空行で終わるから
-			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
-			lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
-			t, err := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, sv.location)
+			utime, _ := strconv.Atoi(key) //エラーでもどうせ0になるだけなので無視
+			sv.boards[bbs].threads[key].firstmod = time.Unix(int64(utime), 0)
+
+			info, err := readfileinfo(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
 			if err != nil {
 				log.Println(err)
 			} else {
-				sv.boards[bbs].threads[key].lastmod = t
+				sv.boards[bbs].threads[key].lastmod = info.ModTime()
 			}
 		}
+		sv.boards[bbs].refresh_subjects()
 	}
 	if len(bds) == 0 {
 		sv.NewBoard("Sample", "サンプル")
@@ -121,7 +123,6 @@ func (sv *Server) initBoard(bbs string) *board {
 	bd.Config.Raw = map[string]string{}
 	bd.server = sv
 	bd.bbs = bbs
-	bd.loadsubject()
 	sv.boards[bbs] = bd
 	return bd
 }
@@ -194,6 +195,18 @@ func exists(name string) bool {
 	return !os.IsNotExist(err)
 }
 
+func readfileinfo(name string) (fs.FileInfo, error) {
+	file, err := os.OpenFile(name, os.O_RDONLY, 666)
+	if err != nil {
+		return nil, err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
 func (sv *Server) Saver() {
 	for bbs, b := range sv.boards {
 		for key, t := range b.threads {
@@ -218,39 +231,6 @@ func (sv *Server) Saver() {
 			os.Chtimes(path, ti, ti)
 		}
 	}
-}
-
-func (bd *board) loadsubject() {
-	datpath := bd.server.Dir + "/" + bd.bbs + "/dat/"
-	files, err := os.ReadDir(filepath.Clean(datpath))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	sort.Slice(files, func(i, j int) bool {
-		info_i, _ := files[i].Info()
-		info_j, _ := files[j].Info()
-		return info_i.ModTime().After(info_j.ModTime())
-	}) //日付順
-	subjects := ""
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".dat") {
-			dat := readalltxt(datpath + file.Name())
-			buf := bytes.NewBufferString(dat)
-			scanner := bufio.NewScanner(buf)
-			scanner.Scan()
-
-			num := uint(strings.Count(string(dat), "\n"))
-
-			tmp := strings.Split(scanner.Text(), "<>")
-			if len(tmp) < 4 {
-				os.Remove(datpath + file.Name())
-				continue
-			}
-			subjects += file.Name() + "<>" + tmp[4] + " (" + fmt.Sprintf("%d", num) + ")\n"
-		}
-	}
-	bd.subject = subjects
 }
 
 func (bd *board) saveSettings() {
