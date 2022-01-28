@@ -143,7 +143,7 @@ func (bd *board) refresh_subjects() {
 }
 
 // 8バイトのランダムな値+1バイトの"0"を返す
-func GenerateID(remote string) [9]byte {
+func GenerateID(remote string) []byte {
 	now := time.Now()
 	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
 	h := md5.New()
@@ -160,7 +160,7 @@ func GenerateID(remote string) [9]byte {
 	}
 	b[8] = '0'
 
-	return b
+	return b[:]
 }
 
 func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
