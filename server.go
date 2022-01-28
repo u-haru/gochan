@@ -85,30 +85,32 @@ func (sv *Server) Init() *Server {
 
 	for _, bbs := range bds { //板情報読み取り
 		log.Println("board found: " + bbs)
-		sv.initBoard(bbs)
-		sv.boards[bbs].readSettings()
+		bd := &board{}
+		bd.init(sv, bbs)
+		bd.readSettings()
 
 		keys := searchdats(sv.Dir + "/" + bbs + "/dat")
 		for _, key := range keys { //スレ情報読み込み
-			sv.boards[bbs].NewThread(key)
-			sv.boards[bbs].threads[key].dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
-			sv.boards[bbs].threads[key].num = uint(strings.Count(sv.boards[bbs].threads[key].dat, "\n"))
-			tmp := strings.Split(sv.boards[bbs].threads[key].dat, "\n")
-			sv.boards[bbs].threads[key].title = strings.Split(tmp[0], "<>")[4]
-			sv.boards[bbs].threads[key].key = key
-			sv.boards[bbs].threads[key].board = sv.boards[bbs]
+			th := &thread{}
+			th.init(bd, key)
+			th.dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+			th.num = uint(strings.Count(th.dat, "\n"))
+			tmp := strings.Split(th.dat, "\n")
+			th.title = strings.Split(tmp[0], "<>")[4]
+			th.key = key
+			th.board = bd
 
 			utime, _ := strconv.Atoi(key) //エラーでもどうせ0になるだけなので無視
-			sv.boards[bbs].threads[key].firstmod = time.Unix(int64(utime), 0)
+			th.firstmod = time.Unix(int64(utime), 0)
 
 			info, err := readfileinfo(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
 			if err != nil {
 				log.Println(err)
 			} else {
-				sv.boards[bbs].threads[key].lastmod = info.ModTime()
+				th.lastmod = info.ModTime()
 			}
 		}
-		sv.boards[bbs].refresh_subjects()
+		bd.refresh_subjects()
 	}
 	if len(bds) == 0 {
 		sv.NewBoard("Sample", "サンプル")
@@ -124,13 +126,21 @@ func (sv *Server) SetLocation(loc string) error {
 	return err
 }
 
-func (sv *Server) initBoard(bbs string) *board {
-	bd := &board{threads: map[string]*thread{}}
+func (bd *board) init(sv *Server, bbs string) {
 	bd.Config.Raw = map[string]string{}
 	bd.server = sv
 	bd.bbs = bbs
+	bd.threads = map[string]*thread{}
 	sv.boards[bbs] = bd
-	return bd
+	return
+}
+
+func (th *thread) init(bd *board, key string) *thread {
+	th.lock = sync.RWMutex{}
+	th.key = key
+	th.board = bd
+	bd.threads[key] = th
+	return th
 }
 
 func (sv *Server) ListenAndServe() error {

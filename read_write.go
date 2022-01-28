@@ -15,7 +15,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -55,7 +54,8 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				dispError(w, "keyが不正です!")
 				return
 			}
-			board.NewThread(key)
+			th := &thread{}
+			th.init(board, key)
 			if v, ok := board.threads[key]; ok {
 				v.title = res.Subject
 			}
@@ -230,7 +230,8 @@ func (sv *Server) NewBoard(bbs, title string) {
 	if !exists(sv.Dir + "/" + bbs) {
 		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 755)
 	}
-	bd := sv.initBoard(bbs)
+	bd := &board{}
+	bd.init(sv, bbs)
 	bd.Config.Raw["BBS_TITLE"] = title
 	bd.Config.Raw["BBS_TITLE_ORIG"] = title
 	bd.Config.Raw["BBS_NONAME_NAME"] = "名無しさん"
@@ -250,15 +251,6 @@ func (sv *Server) DeleteBoard(bbs string) error {
 	}
 	delete(sv.boards, bbs)
 	return nil
-}
-
-func (bd *board) NewThread(key string) *thread {
-	th := &thread{}
-	th.lock = sync.RWMutex{}
-	th.key = key
-	th.board = bd
-	bd.threads[key] = th
-	return th
 }
 
 func (bd *board) DeleteThread(key string) error {
