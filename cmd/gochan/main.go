@@ -27,7 +27,7 @@ func main() {
 	Server.SetLocation("Asia/Tokyo")
 	Server.Function.MessageChecker = messageChecker
 
-	Server.InitServer()
+	Server.Init()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

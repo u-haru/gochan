@@ -69,7 +69,13 @@ type Res struct {
 	}
 }
 
-func (sv *Server) InitServer() *Server {
+func (sv *Server) Init() *Server {
+	if sv.Dir == "" {
+		sv.Dir = "./Server"
+	}
+	if sv.Host == "" {
+		sv.Host = "0.0.0.0:80"
+	}
 	sv.Dir = filepath.Clean(sv.Dir)
 	sv.boards = map[string]*board{}
 	bds := searchboards(sv.Dir)
@@ -128,6 +134,9 @@ func (sv *Server) initBoard(bbs string) *board {
 }
 
 func (sv *Server) ListenAndServe() error {
+	if sv.httpserver == nil {
+		sv.Init()
+	}
 	sv.httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
 	sv.httpserver.HandleFunc("/admin/", sv.AdminAPI)
 	sv.httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
