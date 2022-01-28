@@ -63,10 +63,7 @@ type Res struct {
 	Date                         time.Time
 
 	thread *thread
-	Log    struct {
-		Host string
-		UA   string
-	}
+	Req    http.Request
 }
 
 func (sv *Server) Init() *Server {

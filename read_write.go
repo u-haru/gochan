@@ -66,8 +66,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 		res.thread = board.threads[key]
-		res.Log.Host = r.RemoteAddr
-		res.Log.UA = r.UserAgent()
+		res.Req = *r
 		if res.From == "" {
 			res.From = board.Config.noName
 		}

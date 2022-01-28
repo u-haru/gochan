@@ -64,7 +64,7 @@ func messageChecker(res *gochan.Res) (bool, string) {
 			res.Thread().Num()+1,
 			res.From, res.ID,
 			res.Mail, res.Message,
-			res.Log.Host, res.Log.UA))
+			res.Req.RemoteAddr, res.Req.UserAgent()))
 		if err != nil {
 			log.Println(err)
 		}
