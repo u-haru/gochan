@@ -182,9 +182,9 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 		if th, ok := bd.threads[key]; ok {
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 			w.Header().Set("Cache-Control", "no-cache") //last-modified等で確認取れない限り再取得
-			th.lock.RLock()
+			th.RLock()
 			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(toSJIS(th.dat))) //回数多いためServeContentでキャッシュ保存
-			th.lock.RUnlock()
+			th.RUnlock()
 		}
 	}
 }
@@ -265,11 +265,11 @@ func (bd *board) DeleteThread(key string) error {
 func (th *thread) NewRes(res *Res) {
 	date_id := strings.Replace(res.Date.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[res.Date.Weekday()], 1) + " ID:" + string(res.ID[:]) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
 	outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
-	th.lock.Lock()
+	th.Lock()
 	th.dat += outdat
 	th.num++
 	th.lastmod = res.Date
-	th.lock.Unlock()
+	th.Unlock()
 }
 
 func (th *thread) DeleteRes(num int) error {
@@ -280,10 +280,10 @@ func (th *thread) DeleteRes(num int) error {
 	targetres := tmp[num-1]
 	tmp = strings.Split(targetres, "<>")
 	replaceres := "あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4]
-	th.lock.Lock()
+	th.Lock()
 	th.dat = strings.Replace(th.dat, targetres, replaceres, 1)
 	th.lastmod = time.Now()
-	th.lock.Unlock()
+	th.Unlock()
 	return nil
 }
 

@@ -48,13 +48,13 @@ type board struct {
 
 type thread struct {
 	key      string
-	lock     sync.RWMutex
 	title    string
 	dat      string
 	num      uint
 	firstmod time.Time
 	lastmod  time.Time
 	board    *board
+	sync.RWMutex
 }
 
 type Res struct {
@@ -133,7 +133,6 @@ func (bd *board) init(sv *Server, bbs string) {
 }
 
 func (th *thread) init(bd *board, key string) *thread {
-	th.lock = sync.RWMutex{}
 	th.key = key
 	th.board = bd
 	bd.threads[key] = th
