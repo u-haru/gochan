@@ -129,7 +129,6 @@ func (bd *board) init(sv *Server, bbs string) {
 	bd.bbs = bbs
 	bd.threads = map[string]*thread{}
 	sv.boards[bbs] = bd
-	return
 }
 
 func (th *thread) init(bd *board, key string) *thread {
@@ -175,7 +174,7 @@ func searchboards(dir string) []string {
 			if exists(filepath.Join(dir, file.Name()) + "/setting.txt") {
 				paths = append(paths, file.Name())
 				if !exists(filepath.Join(dir, file.Name()) + "/dat/") {
-					os.MkdirAll(filepath.Join(dir, file.Name())+"/dat/", 755)
+					os.MkdirAll(filepath.Join(dir, file.Name())+"/dat/", 0755)
 				}
 			}
 		}
@@ -211,7 +210,7 @@ func exists(name string) bool {
 }
 
 func readfileinfo(name string) (fs.FileInfo, error) {
-	file, err := os.OpenFile(name, os.O_RDONLY, 666)
+	file, err := os.OpenFile(name, os.O_RDONLY, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -288,12 +287,12 @@ func (bd *board) reloadSettings() {
 	}
 
 	//タイトル
-	if val, ok := bd.Config.Raw["BBS_TITLE"]; !ok {
-		if val, ok = bd.Config.Raw["BBS_TITLE_ORIG"]; !ok {
-			bd.Config.title = "NoTitle"
-		}
-	} else {
+	if val, ok := bd.Config.Raw["BBS_TITLE"]; ok {
 		bd.Config.title = val
+	} else if val, ok := bd.Config.Raw["BBS_TITLE_ORIG"]; ok {
+		bd.Config.title = val
+	} else {
+		bd.Config.title = "NoTitle"
 	}
 
 	//スレストまでのレス数

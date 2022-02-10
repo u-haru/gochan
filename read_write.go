@@ -227,7 +227,7 @@ func readalltxt(path string) string {
 
 func (sv *Server) NewBoard(bbs, title string) {
 	if !exists(sv.Dir + "/" + bbs) {
-		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 755)
+		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 0755)
 	}
 	bd := &board{}
 	bd.init(sv, bbs)
@@ -246,7 +246,7 @@ func (sv *Server) NewBoard(bbs, title string) {
 func (sv *Server) DeleteBoard(bbs string) error {
 	os.RemoveAll(sv.Dir + "/" + bbs)
 	if _, ok := sv.boards[bbs]; !ok {
-		return errors.New("No such board")
+		return errors.New("no such board")
 	}
 	delete(sv.boards, bbs)
 	return nil
@@ -255,7 +255,7 @@ func (sv *Server) DeleteBoard(bbs string) error {
 func (bd *board) DeleteThread(key string) error {
 	os.Remove(bd.server.Dir + "/" + bd.bbs + "/dat/" + key + ".dat")
 	if _, ok := bd.threads[key]; !ok {
-		return errors.New("No such thread")
+		return errors.New("no such thread")
 	}
 	delete(bd.threads, key)
 	bd.refresh_subjects()
@@ -275,7 +275,7 @@ func (th *thread) NewRes(res *Res) {
 func (th *thread) DeleteRes(num int) error {
 	tmp := strings.Split(th.dat, "\n")
 	if len(tmp) < num {
-		return errors.New("No such res")
+		return errors.New("no such res")
 	}
 	targetres := tmp[num-1]
 	tmp = strings.Split(targetres, "<>")
