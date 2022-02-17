@@ -20,6 +20,8 @@ type Server struct {
 	Host   string
 	boards map[string]*board
 
+	adminboard *adminboard
+
 	location   *time.Location
 	httpserver *http.ServeMux
 
@@ -44,6 +46,11 @@ type board struct {
 	subject string
 	server  *Server
 	// Index    *template.Template
+}
+
+type adminboard struct {
+	foldername string
+	server     *Server
 }
 
 type thread struct {
@@ -75,39 +82,36 @@ func (sv *Server) Init() *Server {
 	}
 	sv.Dir = filepath.Clean(sv.Dir)
 	sv.boards = map[string]*board{}
-	bds := searchboards(sv.Dir)
+	var bds []*board
+	bds, sv.adminboard = sv.searchboards()
 	if sv.location == nil {
 		sv.SetLocation("Asia/Tokyo")
 	}
 
 	for _, bbs := range bds { //板情報読み取り
-		log.Println("board found: " + bbs)
-		bd := &board{}
-		bd.init(sv, bbs)
-		bd.readSettings()
-
-		keys := searchdats(sv.Dir + "/" + bbs + "/dat")
+		log.Println("board found: " + bbs.bbs)
+		keys := searchdats(sv.Dir + "/" + bbs.bbs + "/dat")
 		for _, key := range keys { //スレ情報読み込み
 			th := &thread{}
-			th.init(bd, key)
-			th.dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+			th.init(bbs, key)
+			th.dat = readalltxt(sv.Dir + "/" + bbs.bbs + "/dat/" + key + ".dat")
 			th.num = uint(strings.Count(th.dat, "\n"))
 			tmp := strings.Split(th.dat, "\n")
 			th.title = strings.Split(tmp[0], "<>")[4]
 			th.key = key
-			th.board = bd
+			th.board = bbs
 
 			utime, _ := strconv.Atoi(key) //エラーでもどうせ0になるだけなので無視
 			th.firstmod = time.Unix(int64(utime), 0)
 
-			info, err := readfileinfo(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+			info, err := readfileinfo(sv.Dir + "/" + bbs.bbs + "/dat/" + key + ".dat")
 			if err != nil {
 				log.Println(err)
 			} else {
 				th.lastmod = info.ModTime()
 			}
 		}
-		bd.refresh_subjects()
+		bbs.refresh_subjects()
 	}
 	if len(bds) == 0 {
 		sv.NewBoard("Sample", "サンプル")
@@ -143,7 +147,9 @@ func (sv *Server) ListenAndServe() error {
 		sv.Init()
 	}
 	sv.httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
-	sv.httpserver.HandleFunc("/admin/", sv.AdminAPI)
+	if sv.adminboard != nil {
+		sv.httpserver.Handle("/"+sv.adminboard.foldername+"/", sv.adminboard)
+	}
 	sv.httpserver.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/dat/") { //dat
 			sv.dat(w, r)
@@ -161,25 +167,35 @@ func (sv *Server) ListenAndServe() error {
 	return http.ListenAndServe(sv.Host, sv.httpserver)
 }
 
-func searchboards(dir string) []string {
-	dir = filepath.Clean(dir)
+func (sv *Server) searchboards() ([]*board, *adminboard) {
+	dir := filepath.Clean(sv.Dir)
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var paths []string
+	var boards []*board
+	var admin *adminboard
 	for _, file := range files {
 		if file.IsDir() {
 			if exists(filepath.Join(dir, file.Name()) + "/setting.txt") {
-				paths = append(paths, file.Name())
+				bd := &board{}
+				bd.init(sv, file.Name())
+				bd.readSettings()
+				boards = append(boards, bd)
 				if !exists(filepath.Join(dir, file.Name()) + "/dat/") {
 					os.MkdirAll(filepath.Join(dir, file.Name())+"/dat/", 0755)
 				}
 			}
+			if exists(filepath.Join(dir, file.Name()) + "/adminsetting.txt") {
+				admin = &adminboard{
+					server:     sv,
+					foldername: file.Name(),
+				}
+			}
 		}
 	}
-	return paths
+	return boards, admin
 }
 
 func searchdats(datdir string) []string {

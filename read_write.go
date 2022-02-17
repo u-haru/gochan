@@ -287,7 +287,7 @@ func (th *thread) DeleteRes(num int) error {
 	return nil
 }
 
-func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
+func (abd *adminboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var stat struct {
 		Status string      `json:"status,omitempty"`
 		Reason string      `json:"reason,omitempty"`
@@ -300,7 +300,7 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/newBoard"):
 		{
-			sv.NewBoard(bbs, boardname)
+			abd.server.NewBoard(bbs, boardname)
 			stat.Status = "Success"
 		}
 	case strings.HasSuffix(r.URL.Path, "/boardList"):
@@ -310,7 +310,7 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 				Title string `json:"title,omitempty"`
 			}
 			var boards []bd
-			for _, v := range sv.boards {
+			for _, v := range abd.server.boards {
 				boards = append(boards, bd{
 					BBS:   v.bbs,
 					Title: v.Config.title,
@@ -321,7 +321,7 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 		}
 	case strings.HasSuffix(r.URL.Path, "/deleteBoard"):
 		{
-			if err := sv.DeleteBoard(bbs); err == nil {
+			if err := abd.server.DeleteBoard(bbs); err == nil {
 				stat.Status = "Success"
 			} else {
 				stat.Status = "Failed"
@@ -330,7 +330,7 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 		}
 	case strings.HasSuffix(r.URL.Path, "/deleteThread"):
 		{
-			if bd, ok := sv.boards[bbs]; ok {
+			if bd, ok := abd.server.boards[bbs]; ok {
 				if err := bd.DeleteThread(key); err == nil {
 					stat.Status = "Success"
 				} else {
@@ -348,7 +348,7 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				stat.Status = "Failed"
 				stat.Reason = "Invalid resnum"
-			} else if bd, ok := sv.boards[bbs]; !ok {
+			} else if bd, ok := abd.server.boards[bbs]; !ok {
 				stat.Status = "Failed"
 				stat.Reason = "No such board"
 			} else if th, ok := bd.threads[key]; !ok {
@@ -365,7 +365,7 @@ func (sv *Server) AdminAPI(w http.ResponseWriter, r *http.Request) {
 		}
 	default:
 		{
-			http.ServeFile(w, r, sv.Dir+r.URL.Path)
+			http.ServeFile(w, r, abd.server.Dir+r.URL.Path)
 		}
 	}
 	if stat.Status != "" {
