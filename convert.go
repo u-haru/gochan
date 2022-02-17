@@ -27,10 +27,10 @@ func toSJIS(str string) string {
 	}
 }
 
-func stream_toUTF(r io.Reader, w io.Writer) {
-	decoder := transform.NewReader(r, japanese.ShiftJIS.NewDecoder())
-	io.Copy(w, decoder)
-}
+// func stream_toUTF(r io.Reader, w io.Writer) {
+// 	decoder := transform.NewReader(r, japanese.ShiftJIS.NewDecoder())
+// 	io.Copy(w, decoder)
+// }
 
 func stream_toSJIS(r io.Reader, w io.Writer) {
 	encoder := transform.NewReader(r, japanese.ShiftJIS.NewEncoder())

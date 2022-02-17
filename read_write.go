@@ -137,7 +137,7 @@ func (bd *board) refresh_subjects() {
 
 	bd.subject = ""
 	for _, k := range subs {
-		bd.subject += k.key + ".dat<>" + k.title + " (" + fmt.Sprintf("%d", k.num) + ")\n"
+		bd.subject += fmt.Sprintf("%s.dat<>%s (%d)\n", k.key, k.title, k.num)
 	}
 }
 
