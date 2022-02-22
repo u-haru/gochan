@@ -3,6 +3,7 @@ package gochan
 import (
 	"crypto/md5"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/crypto/scrypt"
 )
 
 var Escape = strings.NewReplacer(
@@ -300,7 +303,67 @@ func (th *Thread) DeleteRes(num int) error {
 	return nil
 }
 
+func passhash(pass string) string {
+	salt := []byte("some salt")
+	converted, _ := scrypt.Key([]byte(pass), salt, 16384, 8, 1, 32)
+	return hex.EncodeToString(converted[:])
+}
+
+func (abd *adminboard) auth(w http.ResponseWriter, r *http.Request) (authorized bool) {
+	authorized = false
+	if abd.hash == "noauth" {
+		return true
+	}
+	username := Escape.Replace(r.PostFormValue("username"))
+	password := Escape.Replace(r.PostFormValue("password"))
+	if username == "" || password == "" { //パスがない = クッキー認証
+		akey, err := r.Cookie("key")
+		if err == nil {
+			for i, a := range abd.keys {
+				if a.expires.Before(time.Now()) {
+					abd.keys = append(abd.keys[:i], abd.keys[i+1:]...)
+				}
+				if a.str == akey.Value {
+					authorized = true
+					return
+				}
+			}
+		}
+		return
+	} else if abd.hash == "" { //新規
+		file, err := os.OpenFile(fmt.Sprintf("%s/%s/adminsetting.txt", abd.server.Dir, abd.foldername), os.O_RDWR, 0666)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		abd.hash = passhash(username + password)
+		file.WriteString(abd.hash)
+		file.Close()
+		authorized = true
+		return
+	} else if !authorized { //パスワード認証
+		if abd.hash == passhash(username+password) { //pass auth
+			key := passhash(time.Now().Format("2006-01-02 15:04:05.00"))
+			expire := time.Now().Add(time.Minute * 10) //10分後に失効
+			http.SetCookie(w, &http.Cookie{
+				Name:    "key",
+				Value:   key,
+				Expires: expire,
+			})
+			abd.keys = append(abd.keys, authkey{str: key, expires: expire})
+			authorized = true
+			return
+		}
+	}
+	return false
+}
+
 func (abd *adminboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-cache") //last-modified等で確認取れない限り再取得
+	if !abd.auth(w, r) {
+		http.ServeFile(w, r, fmt.Sprintf("%s/%s/auth.html", abd.server.Dir, abd.foldername))
+		return
+	}
 	var stat struct {
 		Status string      `json:"status,omitempty"`
 		Reason string      `json:"reason,omitempty"`
@@ -311,6 +374,10 @@ func (abd *adminboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	boardname := Escape.Replace(r.PostFormValue("boardname"))
 
 	switch {
+	case strings.HasSuffix(r.URL.Path, "/adminsetting.txt"):
+		{
+			return
+		}
 	case strings.HasSuffix(r.URL.Path, "/newBoard"):
 		{
 			abd.server.NewBoard(bbs, boardname)

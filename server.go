@@ -49,9 +49,16 @@ type board struct {
 	// Index    *template.Template
 }
 
+type authkey struct {
+	expires time.Time
+	str     string
+}
+
 type adminboard struct {
 	foldername string
 	server     *Server
+	hash       string
+	keys       []authkey
 }
 
 type Thread struct {
@@ -193,6 +200,7 @@ func (sv *Server) searchboards() ([]*board, *adminboard) {
 				admin = &adminboard{
 					server:     sv,
 					foldername: file.Name(),
+					hash:       readalltxt(filepath.Join(dir, file.Name()) + "/adminsetting.txt"),
 				}
 			}
 		}
