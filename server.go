@@ -28,13 +28,14 @@ type Server struct {
 	Function struct {
 		IDGenerator func(string) []byte
 		// NGとか
-		MessageChecker func(*Res) (bool, string) //res (ok,reason)
+		WriteChecker   func(*Res) (bool, string) //res (ok,reason)
+		ArchiveChecker func(*Thread) bool
 	}
 }
 
 type board struct {
 	bbs     string
-	threads map[string]*thread
+	threads map[string]*Thread
 	Config  struct {
 		Raw           map[string]string
 		title         string
@@ -53,7 +54,7 @@ type adminboard struct {
 	server     *Server
 }
 
-type thread struct {
+type Thread struct {
 	key      string
 	title    string
 	dat      string
@@ -69,8 +70,9 @@ type Res struct {
 	ID                           []byte
 	Date                         time.Time
 
-	thread *thread
+	thread *Thread
 	Req    http.Request
+	Writer http.ResponseWriter
 }
 
 func (sv *Server) Init() *Server {
@@ -92,7 +94,7 @@ func (sv *Server) Init() *Server {
 		log.Println("board found: " + bbs.bbs)
 		keys := searchdats(sv.Dir + "/" + bbs.bbs + "/dat")
 		for _, key := range keys { //スレ情報読み込み
-			th := &thread{}
+			th := &Thread{}
 			th.init(bbs, key)
 			th.dat = readalltxt(sv.Dir + "/" + bbs.bbs + "/dat/" + key + ".dat")
 			th.num = uint(strings.Count(th.dat, "\n"))
@@ -131,11 +133,11 @@ func (bd *board) init(sv *Server, bbs string) {
 	bd.Config.Raw = map[string]string{}
 	bd.server = sv
 	bd.bbs = bbs
-	bd.threads = map[string]*thread{}
+	bd.threads = map[string]*Thread{}
 	sv.boards[bbs] = bd
 }
 
-func (th *thread) init(bd *board, key string) *thread {
+func (th *Thread) init(bd *board, key string) *Thread {
 	th.key = key
 	th.board = bd
 	bd.threads[key] = th
@@ -237,30 +239,36 @@ func readfileinfo(name string) (fs.FileInfo, error) {
 	return info, nil
 }
 
-func (sv *Server) Saver() {
+func (sv *Server) Save() {
 	for bbs, b := range sv.boards {
-		for key, t := range b.threads {
-			path := filepath.Clean(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
-			dat, err := os.Create(path)
-			if err != nil {
-				log.Println(err)
-			}
-			dat.WriteString(t.dat)
-			dat.Close()
-
-			kakikomis := strings.Split(t.dat, "\n")
-			if len(kakikomis)-2 < 0 {
-				os.Remove(path)
-				continue
-			}
-			lastkakikomidate := strings.Split(kakikomis[len(kakikomis)-2], "<>")[2] //-2なのは最後が空行で終わるから
-			lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
-			lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
-			ti, _ := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, sv.location)
-
-			os.Chtimes(path, ti, ti)
+		for _, t := range b.threads {
+			path := sv.Dir + "/" + bbs + "/dat/"
+			t.Save(path, sv.location)
 		}
 	}
+}
+
+func (th *Thread) Save(dir string, location *time.Location) {
+	os.MkdirAll(dir, 0755)
+	path := filepath.Clean(dir + "/" + th.key + ".dat")
+	dat, err := os.Create(path)
+	if err != nil {
+		log.Println(err)
+	}
+	dat.WriteString(th.dat)
+	dat.Close()
+
+	kakikomis := strings.Split(th.dat, "\n")
+	if len(kakikomis)-2 < 0 {
+		os.Remove(path)
+		return
+	}
+	lastkakikomidate := strings.Split(kakikomis[len(kakikomis)-2], "<>")[2] //-2なのは最後が空行で終わるから
+	lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
+	lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
+	ti, _ := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, location)
+
+	os.Chtimes(path, ti, ti)
 }
 
 func (bd *board) saveSettings() {
@@ -352,19 +360,21 @@ func (bd *board) BBS() string {
 	return bd.bbs
 }
 
-func (th *thread) Key() string {
+func (th *Thread) Key() string {
 	return th.key
 }
-func (th *thread) Title() string {
+func (th *Thread) Title() string {
 	return th.title
 }
-func (th *thread) Num() uint {
+func (th *Thread) Num() uint {
 	return th.num
 }
-func (th *thread) Board() *board {
+func (th *Thread) Board() *board {
 	return th.board
 }
-
-func (rs *Res) Thread() *thread {
+func (th *Thread) Lastmod() time.Time {
+	return th.lastmod
+}
+func (rs *Res) Thread() *Thread {
 	return rs.thread
 }

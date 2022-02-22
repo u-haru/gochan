@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/u-haru/gochan"
 )
@@ -25,25 +26,21 @@ func main() {
 	Server.Dir = Dir
 	Server.Host = Host
 	Server.SetLocation("Asia/Tokyo")
-	Server.Function.MessageChecker = messageChecker
+	Server.Function.WriteChecker = messageChecker
+	Server.Function.ArchiveChecker = archiveChecker
 
 	Server.Init()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-
-	go canseler(c, Server.Saver)
 	log.Println("Listening on: " + Server.Host)
-	// Server.NewBoard("test", "テスト")
-	log.Println(Server.ListenAndServe())
-}
+	go func() {
+		log.Println(Server.ListenAndServe())
+	}()
 
-func canseler(c chan os.Signal, exitfunc func()) {
 	s := <-c
 	fmt.Printf("Signal received: %s \n", s.String())
-	if exitfunc != nil {
-		exitfunc()
-	}
+	Server.Save()
 	close(c)
 	os.Exit(130)
 }
@@ -72,4 +69,13 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	}
 
 	return true, ""
+}
+
+func archiveChecker(th *gochan.Thread) bool {
+	if !th.Writable() {
+		if th.Lastmod().Add(time.Minute * 2).Before(time.Now()) { //スレ落ちから2分経過
+			return true
+		}
+	}
+	return false
 }

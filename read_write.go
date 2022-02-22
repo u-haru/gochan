@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var escape = strings.NewReplacer(
+var Escape = strings.NewReplacer(
 	"\r\n", "<br>",
 	"\r", "<br>",
 	"\n", "<br>",
@@ -34,10 +34,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	key := toUTF(r.PostFormValue("key"))
 
 	res := &Res{}
-	res.Subject = escape.Replace(toUTF(r.PostFormValue("subject")))
-	res.From = escape.Replace(toUTF(r.PostFormValue("FROM")))
-	res.Mail = escape.Replace(toUTF(r.PostFormValue("mail")))
-	res.Message = escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
+	res.Subject = Escape.Replace(toUTF(r.PostFormValue("subject")))
+	res.From = Escape.Replace(toUTF(r.PostFormValue("FROM")))
+	res.Mail = Escape.Replace(toUTF(r.PostFormValue("mail")))
+	res.Message = Escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
 	res.Date = time.Now()
 
 	if board, ok := sv.boards[bbs]; !ok {
@@ -54,7 +54,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				dispError(w, "keyが不正です!")
 				return
 			}
-			th := &thread{}
+			th := &Thread{}
 			th.init(board, key)
 			if v, ok := board.threads[key]; ok {
 				v.title = res.Subject
@@ -67,6 +67,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		}
 		res.thread = board.threads[key]
 		res.Req = *r
+		res.Writer = w
 		if res.From == "" {
 			res.From = board.Config.noName
 		}
@@ -85,14 +86,14 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			res.ID = GenerateID(r.RemoteAddr) // ID生成
 		}
 
-		if sv.Function.MessageChecker != nil {
-			if ok, reason := sv.Function.MessageChecker(res); !ok {
+		if sv.Function.WriteChecker != nil {
+			if ok, reason := sv.Function.WriteChecker(res); !ok {
 				dispError(w, reason)
 				return
 			}
 		}
 
-		if board.threads[key].num >= board.Config.threadMaxRes {
+		if !board.threads[key].Writable() {
 			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
 			return
 		} else {
@@ -111,6 +112,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		</html>`)))
 		board.refresh_subjects()
 	}
+}
+
+func (th *Thread) Writable() bool {
+	return th.num < th.board.Config.threadMaxRes
 }
 
 func (bd *board) refresh_subjects() {
@@ -185,6 +190,14 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 			th.RLock()
 			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(toSJIS(th.dat))) //回数多いためServeContentでキャッシュ保存
 			th.RUnlock()
+
+			if sv.Function.WriteChecker != nil {
+				if ok := sv.Function.ArchiveChecker(th); ok {
+					th.Save(sv.Dir+"/"+bbs+"/kako/", sv.location)
+					bd.DeleteThread(key)
+					return
+				}
+			}
 		}
 	}
 }
@@ -205,7 +218,7 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 func dispError(w http.ResponseWriter, stat string) {
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
 	title := "ERROR!"
-	body := escape.Replace(toSJIS(stat))
+	body := Escape.Replace(toSJIS(stat))
 	fmt.Fprint(w, `<head>
 	<title>`+title+`</title>
 	</head>
@@ -262,7 +275,7 @@ func (bd *board) DeleteThread(key string) error {
 	return nil
 }
 
-func (th *thread) NewRes(res *Res) {
+func (th *Thread) NewRes(res *Res) {
 	date_id := strings.Replace(res.Date.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[res.Date.Weekday()], 1) + " ID:" + string(res.ID[:]) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
 	outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
 	th.Lock()
@@ -272,7 +285,7 @@ func (th *thread) NewRes(res *Res) {
 	th.Unlock()
 }
 
-func (th *thread) DeleteRes(num int) error {
+func (th *Thread) DeleteRes(num int) error {
 	tmp := strings.Split(th.dat, "\n")
 	if len(tmp) < num {
 		return errors.New("no such res")
@@ -293,9 +306,9 @@ func (abd *adminboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Reason string      `json:"reason,omitempty"`
 		Data   interface{} `json:"data,omitempty"`
 	}
-	bbs := escape.Replace(r.PostFormValue("bbs"))
-	key := escape.Replace(r.PostFormValue("key"))
-	boardname := escape.Replace(r.PostFormValue("boardname"))
+	bbs := Escape.Replace(r.PostFormValue("bbs"))
+	key := Escape.Replace(r.PostFormValue("key"))
+	boardname := Escape.Replace(r.PostFormValue("boardname"))
 
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/newBoard"):
