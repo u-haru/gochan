@@ -324,6 +324,7 @@ func (abd *adminboard) auth(w http.ResponseWriter, r *http.Request) (authorized 
 					abd.keys = append(abd.keys[:i], abd.keys[i+1:]...)
 				}
 				if a.str == akey.Value {
+					abd.keys[i].expires = time.Now().Add(time.Minute * 10) //10分後に失効
 					authorized = true
 					return
 				}
@@ -346,9 +347,10 @@ func (abd *adminboard) auth(w http.ResponseWriter, r *http.Request) (authorized 
 			key := passhash(time.Now().Format("2006-01-02 15:04:05.00"))
 			expire := time.Now().Add(time.Minute * 10) //10分後に失効
 			http.SetCookie(w, &http.Cookie{
-				Name:    "key",
-				Value:   key,
-				Expires: expire,
+				Name:   "key",
+				Value:  key,
+				Domain: r.URL.Host,
+				Path:   abd.foldername,
 			})
 			abd.keys = append(abd.keys, authkey{str: key, expires: expire})
 			authorized = true
