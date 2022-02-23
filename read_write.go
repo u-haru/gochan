@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -236,7 +235,7 @@ func readalltxt(path string) string {
 		log.Println(err)
 		return ""
 	}
-	tmp, _ := ioutil.ReadAll(file)
+	tmp, _ := io.ReadAll(file)
 	file.Close()
 	return string(tmp)
 }

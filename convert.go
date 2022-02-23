@@ -2,7 +2,6 @@ package gochan
 
 import (
 	"io"
-	"io/ioutil"
 	"strings"
 
 	"golang.org/x/text/encoding/japanese"
@@ -10,7 +9,7 @@ import (
 )
 
 func toUTF(str string) string {
-	ret, err := ioutil.ReadAll(transform.NewReader(strings.NewReader(str), japanese.ShiftJIS.NewDecoder()))
+	ret, err := io.ReadAll(transform.NewReader(strings.NewReader(str), japanese.ShiftJIS.NewDecoder()))
 	if err == nil {
 		return string(ret)
 	} else {
@@ -19,7 +18,7 @@ func toUTF(str string) string {
 }
 
 func toSJIS(str string) string {
-	ret, err := ioutil.ReadAll(transform.NewReader(strings.NewReader(str), japanese.ShiftJIS.NewEncoder()))
+	ret, err := io.ReadAll(transform.NewReader(strings.NewReader(str), japanese.ShiftJIS.NewEncoder()))
 	if err == nil {
 		return string(ret)
 	} else {
