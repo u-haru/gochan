@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -48,20 +47,21 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	} else {
 		if res.Subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", res.Date.Unix())
+			// if _, ok := board.threads[key]; ok { //すでに同じキーのスレがあったら
+			// 	dispError(w, "keyが不正です!")
+			// 	return
+			// }
+			th := NewThread(key)
+			if err := board.AddThread(th); err != nil {
+				dispError(w, "keyが不正です!")
+				return
+			}
 			i, err := board.Conf.GetInt("SUBJECT_MAXLEN")
 			if err == nil && len(res.Subject) > i {
 				dispError(w, "タイトルが長すぎます!")
 				return
 			}
-			if _, ok := board.threads[key]; ok { //すでに同じキーのスレがあったら
-				dispError(w, "keyが不正です!")
-				return
-			}
-			th := &Thread{}
-			th.init(board, key)
-			if v, ok := board.threads[key]; ok {
-				v.title = res.Subject
-			}
+			th.title = res.Subject
 		}
 		th, ok := board.threads[key]
 		if !ok {
@@ -106,7 +106,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			dispError(w, "このスレッドは書き込みできる数を超えました。\n新しいスレッドを立ててください。")
 			return
 		} else {
-			th.NewRes(res)
+			th.AddRes(res)
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
@@ -121,14 +121,6 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		</html>`)))
 		board.refresh_subjects()
 	}
-}
-
-func (th *Thread) Writable() bool {
-	i, err := th.Conf.GetInt("MAX_RES")
-	if err != nil {
-		return false
-	}
-	return th.num < uint(i)
 }
 
 func (bd *board) refresh_subjects() {
@@ -249,63 +241,6 @@ func readalltxt(path string) string {
 	tmp, _ := io.ReadAll(file)
 	file.Close()
 	return string(tmp)
-}
-
-func (sv *Server) NewBoard(bbs, title string) {
-	if !exists(sv.Dir + "/" + bbs) {
-		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 0755)
-	}
-	bd := &board{}
-	bd.init(sv, bbs)
-	bd.Conf.Set("BBS_TITLE", title)
-	bd.Conf.Set("BBS_TITLE_ORIG", title)
-
-	sv.boards[bbs].reloadSettings()
-	sv.boards[bbs].saveSettings()
-}
-
-func (sv *Server) DeleteBoard(bbs string) error {
-	os.RemoveAll(sv.Dir + "/" + bbs)
-	if _, ok := sv.boards[bbs]; !ok {
-		return errors.New("no such board")
-	}
-	delete(sv.boards, bbs)
-	return nil
-}
-
-func (bd *board) DeleteThread(key string) error {
-	os.Remove(bd.server.Dir + "/" + bd.bbs + "/dat/" + key + ".dat")
-	if _, ok := bd.threads[key]; !ok {
-		return errors.New("no such thread")
-	}
-	delete(bd.threads, key)
-	bd.refresh_subjects()
-	return nil
-}
-
-func (th *Thread) NewRes(res *Res) {
-	date_id := strings.Replace(res.Date.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[res.Date.Weekday()], 1) + " ID:" + string(res.ID[:]) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
-	outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
-	th.Lock()
-	th.dat += toSJIS(outdat)
-	th.num++
-	th.lastmod = res.Date
-	th.Unlock()
-}
-
-func (th *Thread) DeleteRes(num int) error {
-	tmp := strings.Split(th.dat, "\n")
-	if len(tmp) < num {
-		return errors.New("no such res")
-	}
-	targetres := tmp[num-1]
-	tmp = strings.Split(targetres, "<>")
-	replaceres := toSJIS("あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4])
-	th.Lock()
-	th.dat = strings.Replace(th.dat, targetres, replaceres, 1)
-	th.lastmod = time.Now()
-	th.Unlock()
-	return nil
 }
 
 func passhash(pass string) string {

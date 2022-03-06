@@ -1,6 +1,7 @@
 package gochan
 
 import (
+	"errors"
 	"io/fs"
 	"log"
 	"net/http"
@@ -96,8 +97,8 @@ func (sv *Server) Init() *Server {
 		log.Println("board found: " + bbs.bbs)
 		keys := searchdats(sv.Dir + "/" + bbs.bbs + "/dat")
 		for _, key := range keys { //スレ情報読み込み
-			th := &Thread{}
-			th.init(bbs, key)
+			th := NewThread(key)
+			bbs.AddThread(th)
 			th.dat = readalltxt(sv.Dir + "/" + bbs.bbs + "/dat/" + key + ".dat")
 			th.num = uint(strings.Count(th.dat, "\n"))
 			tmp := strings.SplitN(th.dat, "\n", 2)[0]
@@ -137,22 +138,59 @@ func (sv *Server) SetLocation(loc string) error {
 	return err
 }
 
-func (bd *board) init(sv *Server, bbs string) {
-	// bd.Config.Raw = map[string]string{}
+func (sv *Server) AddBoard(bd *board) error {
 	bd.server = sv
-	bd.bbs = bbs
-	bd.threads = map[string]*Thread{}
+	if bd.bbs == "" {
+		return errors.New("board.bbs is empty")
+	}
+	if _, ok := sv.boards[bd.bbs]; ok {
+		return errors.New("bbs already exists")
+	}
 	bd.Conf.SetParent(&sv.Conf)
-	sv.boards[bbs] = bd
+
+	sv.boards[bd.bbs] = bd
+
+	return nil
 }
 
-func (th *Thread) init(bd *board, key string) *Thread {
-	th.key = key
-	th.board = bd
-	th.Conf.SetParent(&bd.Conf)
-	bd.threads[key] = th
-	return th
+func (sv *Server) NewBoard(bbs, title string) {
+	if !exists(sv.Dir + "/" + bbs) {
+		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 0755)
+	}
+	bd := NewBoard(bbs)
+	sv.AddBoard(bd)
+	bd.Conf.Set("BBS_TITLE", title)
+	bd.Conf.Set("BBS_TITLE_ORIG", title)
+
+	sv.boards[bbs].reloadSettings()
+	sv.boards[bbs].saveSettings()
 }
+
+func (sv *Server) DeleteBoard(bbs string) error {
+	os.RemoveAll(sv.Dir + "/" + bbs)
+	if _, ok := sv.boards[bbs]; !ok {
+		return errors.New("no such board")
+	}
+	delete(sv.boards, bbs)
+	return nil
+}
+
+// func (bd *board) init(sv *Server, bbs string) {
+// 	// bd.Config.Raw = map[string]string{}
+// 	bd.server = sv
+// 	bd.bbs = bbs
+// 	bd.threads = map[string]*Thread{}
+// 	bd.Conf.SetParent(&sv.Conf)
+// 	sv.boards[bbs] = bd
+// }
+
+// func (th *Thread) init(bd *board, key string) *Thread {
+// 	th.key = key
+// 	th.board = bd
+// 	th.Conf.SetParent(&bd.Conf)
+// 	bd.threads[key] = th
+// 	return th
+// }
 
 func (sv *Server) ListenAndServe() error {
 	if sv.httpserver == nil {
@@ -191,8 +229,8 @@ func (sv *Server) searchboards() ([]*board, *adminboard) {
 	for _, file := range files {
 		if file.IsDir() {
 			if exists(filepath.Join(dir, file.Name()) + "/setting.json") {
-				bd := &board{}
-				bd.init(sv, file.Name())
+				bd := NewBoard(file.Name())
+				sv.AddBoard(bd)
 				bd.readSettings()
 				bd.title, _ = bd.Conf.GetString("TITLE")
 				boards = append(boards, bd)
@@ -260,91 +298,6 @@ func (sv *Server) Save() {
 	}
 }
 
-func (th *Thread) Save(dir string, location *time.Location) {
-	os.MkdirAll(dir, 0755)
-	path := filepath.Clean(dir + "/" + th.key + ".dat")
-	dat, err := os.Create(path)
-	if err != nil {
-		log.Println(err)
-	}
-	dat.WriteString(th.dat)
-	dat.Close()
-
-	kakikomis := strings.Split(th.dat, "\n")
-	if len(kakikomis)-2 < 0 {
-		os.Remove(path)
-		return
-	}
-	lastkakikomidate := strings.Split(kakikomis[len(kakikomis)-2], "<>")[2] //-2なのは最後が空行で終わるから
-	lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
-	lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
-	ti, _ := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, location)
-
-	os.Chtimes(path, ti, ti)
-}
-
-func (bd *board) saveSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.json")
-	file, err := os.Create(path)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer file.Close()
-	bd.Conf.ExportJson(file)
-	// for k, v := range bd.Config.Raw {
-	// 	fmt.Fprint(file, toSJIS(k+"="+v+"\r\n"))
-	// }
-}
-
-func (bd *board) readSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.json")
-	f, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	bd.Conf.LoadJson(f)
-	bd.Conf.SetParent(&bd.server.Conf)
-	// txt := readalltxt(path)
-	// buf := bytes.NewBufferString(toUTF(txt))
-	// scanner := bufio.NewScanner(buf)
-
-	// settings := map[string]string{}
-	// for scanner.Scan() { //1行ずつ読み出し
-	// 	text := scanner.Text()
-	// 	strs := strings.SplitN(text, "=", 2)
-	// 	if len(strs) > 1 {
-	// 		settings[strs[0]] = strs[1] //setting[key] = val
-	// 	}
-	// }
-	// bd.Config.Raw = settings
-
-	bd.reloadSettings()
-}
-
-func (bd *board) reloadSettings() {
-
-}
-func (bd *board) BBS() string {
-	return bd.bbs
-}
-
-func (th *Thread) Key() string {
-	return th.key
-}
-func (th *Thread) Title() string {
-	return th.title
-}
-func (th *Thread) Num() uint {
-	return th.num
-}
-func (th *Thread) Board() *board {
-	return th.board
-}
-func (th *Thread) Lastmod() time.Time {
-	return th.lastmod
-}
 func (rs *Res) Thread() *Thread {
 	return rs.thread
 }
