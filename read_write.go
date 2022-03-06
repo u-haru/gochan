@@ -48,7 +48,8 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	} else {
 		if res.Subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", res.Date.Unix())
-			if uint(len(res.Subject)) > board.Config.subjectMaxLen {
+			i, err := board.Conf.GetInt("SUBJECT_MAXLEN")
+			if err == nil && len(res.Subject) > i {
 				dispError(w, "タイトルが長すぎます!")
 				return
 			}
@@ -61,19 +62,25 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			if v, ok := board.threads[key]; ok {
 				v.title = res.Subject
 			}
-		} else {
-			if _, ok := board.threads[key]; !ok {
-				dispError(w, "keyが不正です!")
-				return
-			}
 		}
-		res.thread = board.threads[key]
+		th, ok := board.threads[key]
+		if !ok {
+			dispError(w, "keyが不正です!")
+			return
+		}
+		res.thread = th
 		res.Req = *r
 		res.Writer = w
 		if res.From == "" {
-			res.From = board.Config.noName
+			s, err := th.Conf.GetString("NONAME")
+			if err == nil {
+				res.From = s
+			} else {
+				res.From = "Noname"
+			}
 		}
-		if uint(len(res.Message)) > board.Config.messageMaxLen {
+		i, err := th.Conf.GetInt("MAX_RES_LEN")
+		if err == nil && len(res.Message) > i {
 			dispError(w, "本文が長すぎます!")
 			return
 		}
@@ -95,11 +102,11 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 
-		if !board.threads[key].Writable() {
-			dispError(w, "このスレッドは"+fmt.Sprint(board.Config.threadMaxRes)+"を超えました。\n新しいスレッドを立ててください。")
+		if !th.Writable() {
+			dispError(w, "このスレッドは書き込みできる数を超えました。\n新しいスレッドを立ててください。")
 			return
 		} else {
-			board.threads[key].NewRes(res)
+			th.NewRes(res)
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
@@ -117,7 +124,11 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 }
 
 func (th *Thread) Writable() bool {
-	return th.num < th.board.Config.threadMaxRes
+	i, err := th.Conf.GetInt("MAX_RES")
+	if err != nil {
+		return false
+	}
+	return th.num < uint(i)
 }
 
 func (bd *board) refresh_subjects() {
@@ -190,7 +201,7 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 			w.Header().Set("Cache-Control", "no-cache") //last-modified等で確認取れない限り再取得
 			th.RLock()
-			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(toSJIS(th.dat))) //回数多いためServeContentでキャッシュ保存
+			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(th.dat)) //回数多いためServeContentでキャッシュ保存
 			th.RUnlock()
 
 			if sv.Function.WriteChecker != nil {
@@ -246,13 +257,8 @@ func (sv *Server) NewBoard(bbs, title string) {
 	}
 	bd := &board{}
 	bd.init(sv, bbs)
-	bd.Config.Raw["BBS_TITLE"] = title
-	bd.Config.Raw["BBS_TITLE_ORIG"] = title
-	bd.Config.Raw["BBS_NONAME_NAME"] = "名無しさん"
-	bd.Config.Raw["BBS_DELETE_NAME"] = "あぼーん"
-	bd.Config.Raw["BBS_MAX_RES"] = "1000"
-	bd.Config.Raw["BBS_MESSAGE_MAXLEN"] = "2048"
-	bd.Config.Raw["BBS_SUBJECT_MAXLEN"] = "30"
+	bd.Conf.Set("BBS_TITLE", title)
+	bd.Conf.Set("BBS_TITLE_ORIG", title)
 
 	sv.boards[bbs].reloadSettings()
 	sv.boards[bbs].saveSettings()
@@ -281,7 +287,7 @@ func (th *Thread) NewRes(res *Res) {
 	date_id := strings.Replace(res.Date.Format("2006-01-02(<>) 15:04:05.00"), "<>", wdays[res.Date.Weekday()], 1) + " ID:" + string(res.ID[:]) // 2021-08-25(水) 22:44:30.40 ID:MgUxkbjl0
 	outdat := res.From + "<>" + res.Mail + "<>" + date_id + "<>" + res.Message + "<>" + res.Subject + "\n"                                     // 吐き出すDat
 	th.Lock()
-	th.dat += outdat
+	th.dat += toSJIS(outdat)
 	th.num++
 	th.lastmod = res.Date
 	th.Unlock()
@@ -294,7 +300,7 @@ func (th *Thread) DeleteRes(num int) error {
 	}
 	targetres := tmp[num-1]
 	tmp = strings.Split(targetres, "<>")
-	replaceres := "あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4]
+	replaceres := toSJIS("あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4])
 	th.Lock()
 	th.dat = strings.Replace(th.dat, targetres, replaceres, 1)
 	th.lastmod = time.Now()
@@ -394,7 +400,7 @@ func (abd *adminboard) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			for _, v := range abd.server.boards {
 				boards = append(boards, bd{
 					BBS:   v.bbs,
-					Title: v.Config.title,
+					Title: v.title,
 				})
 			}
 			stat.Status = "Success"

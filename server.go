@@ -1,9 +1,6 @@
 package gochan
 
 import (
-	"bufio"
-	"bytes"
-	"fmt"
 	"io/fs"
 	"log"
 	"net/http"
@@ -13,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/u-haru/gochan/pkg/config"
 )
 
 type Server struct {
@@ -25,6 +24,7 @@ type Server struct {
 	location   *time.Location
 	httpserver *http.ServeMux
 
+	Conf     config.Config
 	Function struct {
 		IDGenerator func(string) []byte
 		// NGとか
@@ -35,15 +35,9 @@ type Server struct {
 
 type board struct {
 	bbs     string
+	title   string
 	threads map[string]*Thread
-	Config  struct {
-		Raw           map[string]string
-		title         string
-		threadMaxRes  uint
-		messageMaxLen uint
-		subjectMaxLen uint
-		noName        string
-	}
+	Conf    config.Config
 	subject string
 	server  *Server
 	// Index    *template.Template
@@ -70,6 +64,7 @@ type Thread struct {
 	lastmod  time.Time
 	board    *board
 	sync.RWMutex
+	Conf config.Config
 }
 
 type Res struct {
@@ -105,8 +100,8 @@ func (sv *Server) Init() *Server {
 			th.init(bbs, key)
 			th.dat = readalltxt(sv.Dir + "/" + bbs.bbs + "/dat/" + key + ".dat")
 			th.num = uint(strings.Count(th.dat, "\n"))
-			tmp := strings.Split(th.dat, "\n")
-			th.title = strings.Split(tmp[0], "<>")[4]
+			tmp := strings.SplitN(th.dat, "\n", 2)[0]
+			th.title = strings.Split(toUTF(tmp), "<>")[4]
 			th.key = key
 			th.board = bbs
 
@@ -127,6 +122,12 @@ func (sv *Server) Init() *Server {
 		log.Println("No boards Found! Created Sample board")
 	}
 	sv.httpserver = http.NewServeMux()
+
+	sv.Conf.Set("NONAME", "名無しさん")
+	sv.Conf.Set("DELETED_NAME", "あぼーん")
+	sv.Conf.Set("MAX_RES", 1000)
+	sv.Conf.Set("MAX_RES_LEN", 2048)
+	sv.Conf.Set("SUBJECT_MAXLEN", 30)
 	return sv
 }
 
@@ -137,16 +138,18 @@ func (sv *Server) SetLocation(loc string) error {
 }
 
 func (bd *board) init(sv *Server, bbs string) {
-	bd.Config.Raw = map[string]string{}
+	// bd.Config.Raw = map[string]string{}
 	bd.server = sv
 	bd.bbs = bbs
 	bd.threads = map[string]*Thread{}
+	bd.Conf.SetParent(&sv.Conf)
 	sv.boards[bbs] = bd
 }
 
 func (th *Thread) init(bd *board, key string) *Thread {
 	th.key = key
 	th.board = bd
+	th.Conf.SetParent(&bd.Conf)
 	bd.threads[key] = th
 	return th
 }
@@ -187,10 +190,11 @@ func (sv *Server) searchboards() ([]*board, *adminboard) {
 	var admin *adminboard
 	for _, file := range files {
 		if file.IsDir() {
-			if exists(filepath.Join(dir, file.Name()) + "/setting.txt") {
+			if exists(filepath.Join(dir, file.Name()) + "/setting.json") {
 				bd := &board{}
 				bd.init(sv, file.Name())
 				bd.readSettings()
+				bd.title, _ = bd.Conf.GetString("TITLE")
 				boards = append(boards, bd)
 				if !exists(filepath.Join(dir, file.Name()) + "/dat/") {
 					os.MkdirAll(filepath.Join(dir, file.Name())+"/dat/", 0755)
@@ -280,90 +284,48 @@ func (th *Thread) Save(dir string, location *time.Location) {
 }
 
 func (bd *board) saveSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.txt")
+	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.json")
 	file, err := os.Create(path)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	for k, v := range bd.Config.Raw {
-		fmt.Fprint(file, toSJIS(k+"="+v+"\r\n"))
-	}
+	defer file.Close()
+	bd.Conf.ExportJson(file)
+	// for k, v := range bd.Config.Raw {
+	// 	fmt.Fprint(file, toSJIS(k+"="+v+"\r\n"))
+	// }
 }
 
 func (bd *board) readSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.txt")
-	txt := readalltxt(path)
-	buf := bytes.NewBufferString(toUTF(txt))
-	scanner := bufio.NewScanner(buf)
-
-	settings := map[string]string{}
-	for scanner.Scan() { //1行ずつ読み出し
-		text := scanner.Text()
-		strs := strings.SplitN(text, "=", 2)
-		if len(strs) > 1 {
-			settings[strs[0]] = strs[1] //setting[key] = val
-		}
+	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.json")
+	f, err := os.Open(path)
+	if err != nil {
+		return
 	}
-	bd.Config.Raw = settings
+	defer f.Close()
+	bd.Conf.LoadJson(f)
+	bd.Conf.SetParent(&bd.server.Conf)
+	// txt := readalltxt(path)
+	// buf := bytes.NewBufferString(toUTF(txt))
+	// scanner := bufio.NewScanner(buf)
+
+	// settings := map[string]string{}
+	// for scanner.Scan() { //1行ずつ読み出し
+	// 	text := scanner.Text()
+	// 	strs := strings.SplitN(text, "=", 2)
+	// 	if len(strs) > 1 {
+	// 		settings[strs[0]] = strs[1] //setting[key] = val
+	// 	}
+	// }
+	// bd.Config.Raw = settings
 
 	bd.reloadSettings()
 }
 
 func (bd *board) reloadSettings() {
-	//名無し
-	if val, ok := bd.Config.Raw["BBS_NONAME_NAME"]; !ok {
-		bd.Config.noName = "名無し"
-	} else {
-		bd.Config.noName = val
-	}
 
-	//タイトル
-	if val, ok := bd.Config.Raw["BBS_TITLE"]; ok {
-		bd.Config.title = val
-	} else if val, ok := bd.Config.Raw["BBS_TITLE_ORIG"]; ok {
-		bd.Config.title = val
-	} else {
-		bd.Config.title = "NoTitle"
-	}
-
-	//スレストまでのレス数
-	if val, ok := bd.Config.Raw["BBS_MAX_RES"]; !ok {
-		bd.Config.threadMaxRes = 1000
-	} else {
-		val, err := strconv.Atoi(val)
-		if err != nil {
-			bd.Config.threadMaxRes = 1000
-		} else {
-			bd.Config.threadMaxRes = uint(val)
-		}
-	}
-
-	//レス長さ
-	if val, ok := bd.Config.Raw["BBS_MESSAGE_MAXLEN"]; !ok {
-		bd.Config.messageMaxLen = 1000
-	} else {
-		val, err := strconv.Atoi(val)
-		if err != nil {
-			bd.Config.messageMaxLen = 1000
-		} else {
-			bd.Config.messageMaxLen = uint(val)
-		}
-	}
-
-	//スレタイ長さ
-	if val, ok := bd.Config.Raw["BBS_SUBJECT_MAXLEN"]; !ok {
-		bd.Config.subjectMaxLen = 30
-	} else {
-		val, err := strconv.Atoi(val)
-		if err != nil {
-			bd.Config.subjectMaxLen = 30
-		} else {
-			bd.Config.subjectMaxLen = uint(val)
-		}
-	}
 }
-
 func (bd *board) BBS() string {
 	return bd.bbs
 }
