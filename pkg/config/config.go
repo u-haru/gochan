@@ -33,7 +33,6 @@ func (c *Config) SetParent(p *Config) {
 func (c *Config) Get(k string, to interface{}) error {
 	if c.vals == nil {
 		c.vals = map[string]interface{}{}
-		return errors.New("no such key")
 	}
 	v, ok := (c.vals)[k]
 	if !ok {
