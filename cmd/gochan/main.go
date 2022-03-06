@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
 	"time"
 
 	"github.com/u-haru/gochan"
@@ -21,9 +22,13 @@ func main() {
 	flag.StringVar(&Host, "h", "0.0.0.0:80", "-h [Host]")
 	flag.Parse()
 
-	Server := gochan.NewServer(Dir)
+	// Server := gochan.NewServer(Dir)
+	Server := &gochan.Server{}
 	Server.Function.WriteChecker = messageChecker
 	Server.Function.ArchiveChecker = archiveChecker
+	Server.Function.RuleGenerator = RuleGenerator
+
+	Server.Init(Dir)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -72,4 +77,17 @@ func archiveChecker(th *gochan.Thread) bool {
 		}
 	}
 	return false
+}
+
+var noname = regexp.MustCompile("NONAME=(.*)<br>")
+
+func RuleGenerator(th *gochan.Thread) {
+	res1, err := th.GetRes(1) //1つめの書き込みゲット
+	if err != nil {
+		return
+	}
+	group := noname.FindSubmatch([]byte(res1.Message))
+	if len(group) == 2 {
+		th.Conf.Set("NONAME", string(group[1]))
+	}
 }

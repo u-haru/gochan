@@ -31,6 +31,7 @@ type Server struct {
 		// NGとか
 		WriteChecker   func(*Res) (bool, string) //res (ok,reason)
 		ArchiveChecker func(*Thread) bool
+		RuleGenerator  func(*Thread)
 	}
 }
 
@@ -80,8 +81,7 @@ type Res struct {
 	Writer http.ResponseWriter
 }
 
-func NewServer(dir string) *Server {
-	sv := &Server{}
+func (sv *Server) Init(dir string) *Server {
 	sv.Dir = filepath.Clean(dir)
 	sv.boards = map[string]*board{}
 	var bds []*board
@@ -108,6 +108,10 @@ func NewServer(dir string) *Server {
 				log.Println(err)
 			} else {
 				th.lastmod = info.ModTime()
+			}
+
+			if sv.Function.RuleGenerator != nil {
+				sv.Function.RuleGenerator(th)
 			}
 		}
 		bbs.refresh_subjects()

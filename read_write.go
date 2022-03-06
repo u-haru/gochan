@@ -35,9 +35,9 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	key := toUTF(r.PostFormValue("key"))
 
 	res := &Res{}
-	res.Subject = Escape.Replace(toUTF(r.PostFormValue("subject")))
-	res.From = Escape.Replace(toUTF(r.PostFormValue("FROM")))
-	res.Mail = Escape.Replace(toUTF(r.PostFormValue("mail")))
+	res.Subject = strings.ReplaceAll(Escape.Replace(toUTF(r.PostFormValue("subject"))), "<br>", "")
+	res.From = strings.ReplaceAll(Escape.Replace(toUTF(r.PostFormValue("FROM"))), "<br>", "")
+	res.Mail = strings.ReplaceAll(Escape.Replace(toUTF(r.PostFormValue("mail"))), "<br>", "")
 	res.Message = Escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
 	res.Date = time.Now()
 
@@ -107,6 +107,12 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			return
 		} else {
 			th.AddRes(res)
+		}
+
+		if res.Subject != "" { //新規スレの場合にルール生成
+			if sv.Function.RuleGenerator != nil {
+				sv.Function.RuleGenerator(th)
+			}
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")

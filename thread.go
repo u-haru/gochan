@@ -26,7 +26,7 @@ func (th *Thread) AddRes(res *Res) {
 }
 
 func (th *Thread) DeleteRes(num int) error {
-	tmp := strings.Split(th.dat, "\n")
+	tmp := strings.SplitN(th.dat, "\n", num)
 	if len(tmp) < num {
 		return errors.New("no such res")
 	}
@@ -38,6 +38,24 @@ func (th *Thread) DeleteRes(num int) error {
 	th.lastmod = time.Now()
 	th.Unlock()
 	return nil
+}
+
+// From,Mail,Message,Subject only
+func (th *Thread) GetRes(num int) (*Res, error) {
+	tmp := strings.SplitN(th.dat, "\n", num)
+	if len(tmp) < num {
+		return nil, errors.New("no such res")
+	}
+	targetres := toUTF(tmp[num-1])
+	tmp = strings.Split(targetres, "<>")
+
+	res := &Res{
+		From:    tmp[0],
+		Mail:    tmp[1],
+		Message: tmp[3],
+		Subject: tmp[4],
+	}
+	return res, nil
 }
 
 func (th *Thread) Save(dir string, location *time.Location) {
