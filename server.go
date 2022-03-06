@@ -177,23 +177,6 @@ func (sv *Server) DeleteBoard(bbs string) error {
 	return nil
 }
 
-// func (bd *board) init(sv *Server, bbs string) {
-// 	// bd.Config.Raw = map[string]string{}
-// 	bd.server = sv
-// 	bd.bbs = bbs
-// 	bd.threads = map[string]*Thread{}
-// 	bd.Conf.SetParent(&sv.Conf)
-// 	sv.boards[bbs] = bd
-// }
-
-// func (th *Thread) init(bd *board, key string) *Thread {
-// 	th.key = key
-// 	th.board = bd
-// 	th.Conf.SetParent(&bd.Conf)
-// 	bd.threads[key] = th
-// 	return th
-// }
-
 func (sv *Server) ListenAndServe() error {
 	if sv.httpserver == nil {
 		sv.Init()
