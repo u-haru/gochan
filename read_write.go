@@ -145,10 +145,13 @@ func (bd *board) refresh_subjects() {
 		return subs[i].lastmod.After(subs[j].lastmod)
 	}) // ソート
 
+	bd.Lock()
 	bd.subject = ""
 	for _, k := range subs {
-		bd.subject += fmt.Sprintf("%s.dat<>%s (%d)\n", k.key, k.title, k.num)
+		bd.subject += toSJIS(fmt.Sprintf("%s.dat<>%s (%d)\n", k.key, k.title, k.num))
 	}
+	bd.lastmod = time.Now()
+	bd.Unlock()
 }
 
 // 8バイトのランダムな値+1バイトの"0"を返す
@@ -214,7 +217,9 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	w.Header().Set("Cache-Control", "no-cache")
 	if bd, ok := sv.boards[bbs]; ok {
-		stream_toSJIS(strings.NewReader(bd.subject), w)
+		bd.RLock()
+		http.ServeContent(w, r, "/"+bbs+"/subject.txt", bd.lastmod, strings.NewReader(bd.subject)) //回数多いためServeContentでキャッシュ保存
+		bd.RUnlock()
 	} else {
 		dispError(w, "bbsが不正です!")
 	}

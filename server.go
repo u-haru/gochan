@@ -41,6 +41,8 @@ type board struct {
 	Conf    config.Config
 	subject string
 	server  *Server
+	lastmod time.Time
+	sync.RWMutex
 	// Index    *template.Template
 }
 
