@@ -31,7 +31,7 @@ func toSJIS(str string) string {
 // 	io.Copy(w, decoder)
 // }
 
-func stream_toSJIS(r io.Reader, w io.Writer) {
-	encoder := transform.NewReader(r, japanese.ShiftJIS.NewEncoder())
-	io.Copy(w, encoder)
-}
+// func stream_toSJIS(r io.Reader, w io.Writer) {
+// 	encoder := transform.NewReader(r, japanese.ShiftJIS.NewEncoder())
+// 	io.Copy(w, encoder)
+// }
