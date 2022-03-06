@@ -21,21 +21,15 @@ func main() {
 	flag.StringVar(&Host, "h", "0.0.0.0:80", "-h [Host]")
 	flag.Parse()
 
-	// Server := gochan.NewServer(Dir)
-	Server := &gochan.Server{}
-	Server.Dir = Dir
-	Server.Host = Host
-	Server.SetLocation("Asia/Tokyo")
+	Server := gochan.NewServer(Dir)
 	Server.Function.WriteChecker = messageChecker
 	Server.Function.ArchiveChecker = archiveChecker
 
-	Server.Init()
-
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
-	log.Println("Listening on: " + Server.Host)
+	log.Println("Listening on: " + Host)
 	go func() {
-		log.Println(Server.ListenAndServe())
+		log.Println(Server.ListenAndServe(Host))
 	}()
 
 	s := <-c

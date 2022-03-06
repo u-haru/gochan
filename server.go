@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,7 +18,6 @@ import (
 
 type Server struct {
 	Dir    string
-	Host   string
 	boards map[string]*board
 
 	adminboard *adminboard
@@ -80,20 +80,12 @@ type Res struct {
 	Writer http.ResponseWriter
 }
 
-func (sv *Server) Init() *Server {
-	if sv.Dir == "" {
-		sv.Dir = "./Server"
-	}
-	if sv.Host == "" {
-		sv.Host = "0.0.0.0:80"
-	}
-	sv.Dir = filepath.Clean(sv.Dir)
+func NewServer(dir string) *Server {
+	sv := &Server{}
+	sv.Dir = filepath.Clean(dir)
 	sv.boards = map[string]*board{}
 	var bds []*board
 	bds, sv.adminboard = sv.searchboards()
-	if sv.location == nil {
-		sv.SetLocation("Asia/Tokyo")
-	}
 
 	for _, bbs := range bds { //板情報読み取り
 		log.Println("board found: " + bbs.bbs)
@@ -125,6 +117,8 @@ func (sv *Server) Init() *Server {
 		log.Println("No boards Found! Created Sample board")
 	}
 	sv.httpserver = http.NewServeMux()
+
+	sv.SetLocation("Asia/Tokyo")
 
 	sv.Conf.Set("NONAME", "名無しさん")
 	sv.Conf.Set("DELETED_NAME", "あぼーん")
@@ -177,10 +171,18 @@ func (sv *Server) DeleteBoard(bbs string) error {
 	return nil
 }
 
-func (sv *Server) ListenAndServe() error {
-	if sv.httpserver == nil {
-		sv.Init()
+func (sv *Server) ListenAndServe(host string) error {
+	if host == "" {
+		host = ":http"
 	}
+	ln, err := net.Listen("tcp", host)
+	if err != nil {
+		return err
+	}
+	return sv.Serve(ln)
+}
+
+func (sv *Server) Serve(ln net.Listener) error {
 	sv.httpserver.HandleFunc("/test/bbs.cgi", sv.bbs)
 	if sv.adminboard != nil {
 		sv.httpserver.Handle("/"+sv.adminboard.foldername+"/", sv.adminboard)
@@ -199,7 +201,7 @@ func (sv *Server) ListenAndServe() error {
 		}
 		http.ServeFile(w, r, sv.Dir+r.URL.Path)
 	})
-	return http.ListenAndServe(sv.Host, sv.httpserver)
+	return http.Serve(ln, sv.httpserver)
 }
 
 func (sv *Server) searchboards() ([]*board, *adminboard) {
