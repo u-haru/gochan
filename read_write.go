@@ -199,7 +199,7 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(th.dat)) //回数多いためServeContentでキャッシュ保存
 			th.RUnlock()
 
-			if sv.Function.WriteChecker != nil {
+			if sv.Function.ArchiveChecker != nil {
 				if ok := sv.Function.ArchiveChecker(th); ok {
 					th.Save(sv.Dir+"/"+bbs+"/kako/", sv.location)
 					bd.DeleteThread(key)
