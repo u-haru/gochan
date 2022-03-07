@@ -23,6 +23,15 @@ func (c *Config) LoadJson(from io.Reader) error {
 	if err != nil {
 		return err
 	}
+	for i, v := range c.vals {
+		rv := reflect.TypeOf(v)
+		if rv.Kind() == reflect.Float64 || rv.Kind() == reflect.Float32 {
+			f, ok := v.(float64)
+			if ok && math.Floor(f) == f {
+				c.vals[i] = int(f)
+			}
+		}
+	}
 	return nil
 }
 
@@ -43,7 +52,7 @@ func (c *Config) Get(k string, to interface{}) error {
 	}
 
 	rt := reflect.ValueOf(to)
-	if rt.Kind() != reflect.Ptr || rt.IsNil() {
+	if rt.IsNil() || rt.Kind() != reflect.Ptr {
 		return errors.New(reflect.TypeOf(to).String() + " isn't pointer")
 	}
 	p := rt.Elem()
@@ -63,13 +72,7 @@ func (c *Config) GetInt(k string) (int, error) {
 	var i int
 	err := c.Get(k, &i)
 	if err != nil {
-		f, err := c.GetFloat64(k)
-		if err != nil {
-			return 0, err
-		}
-		if math.Floor(f) == f {
-			return int(f), nil
-		}
+		return 0, err
 	}
 	return i, nil
 }
