@@ -246,6 +246,18 @@ func readalltxt(path string) string {
 	return string(tmp)
 }
 
+type authkey struct {
+	expires time.Time
+	str     string
+}
+
+type adminboard struct {
+	foldername string
+	server     *Server
+	hash       string
+	keys       []authkey
+}
+
 func passhash(pass string) string {
 	salt := []byte("some salt")
 	converted, _ := scrypt.Key([]byte(pass), salt, 16384, 8, 1, 32)

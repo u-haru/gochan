@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/u-haru/gochan/pkg/config"
@@ -32,42 +31,6 @@ type Server struct {
 		ArchiveChecker func(*Thread) bool
 		RuleGenerator  func(*Thread)
 	}
-}
-
-type board struct {
-	bbs     string
-	title   string
-	threads map[string]*Thread
-	Conf    config.Config
-	subject string
-	server  *Server
-	lastmod time.Time
-	sync.RWMutex
-	// Index    *template.Template
-}
-
-type authkey struct {
-	expires time.Time
-	str     string
-}
-
-type adminboard struct {
-	foldername string
-	server     *Server
-	hash       string
-	keys       []authkey
-}
-
-type Thread struct {
-	key      string
-	title    string
-	dat      string
-	num      uint
-	firstmod time.Time
-	lastmod  time.Time
-	board    *board
-	sync.RWMutex
-	Conf config.Config
 }
 
 type Res struct {

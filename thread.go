@@ -6,8 +6,23 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/u-haru/gochan/pkg/config"
 )
+
+type Thread struct {
+	key      string
+	title    string
+	dat      string
+	num      uint
+	firstmod time.Time
+	lastmod  time.Time
+	board    *board
+	sync.RWMutex
+	Conf config.Config
+}
 
 func NewThread(key string) *Thread {
 	th := &Thread{}

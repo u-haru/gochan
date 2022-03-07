@@ -5,7 +5,23 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/u-haru/gochan/pkg/config"
 )
+
+type board struct {
+	bbs     string
+	title   string
+	threads map[string]*Thread
+	Conf    config.Config
+	subject string
+	server  *Server
+	lastmod time.Time
+	sync.RWMutex
+	// Index    *template.Template
+}
 
 func NewBoard(bbs string) *board {
 	bd := &board{}
