@@ -40,6 +40,8 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	res.Mail = strings.ReplaceAll(Escape.Replace(toUTF(r.PostFormValue("mail"))), "<br>", "")
 	res.Message = Escape.Replace(toUTF(r.PostFormValue("MESSAGE")))
 	res.Date = time.Now()
+	res.Req = *r
+	res.Writer = w
 
 	if board, ok := sv.boards[bbs]; !ok {
 		dispError(w, "bbsが不正です!")
@@ -47,10 +49,6 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	} else {
 		if res.Subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", res.Date.Unix())
-			// if _, ok := board.threads[key]; ok { //すでに同じキーのスレがあったら
-			// 	dispError(w, "keyが不正です!")
-			// 	return
-			// }
 			th := NewThread(key)
 			if err := board.AddThread(th); err != nil {
 				dispError(w, "keyが不正です!")
@@ -68,17 +66,6 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			dispError(w, "keyが不正です!")
 			return
 		}
-		res.thread = th
-		res.Req = *r
-		res.Writer = w
-		if res.From == "" {
-			s, err := th.Conf.GetString("NONAME")
-			if err == nil {
-				res.From = s
-			} else {
-				res.From = "Noname"
-			}
-		}
 		i, err := th.Conf.GetInt("MAX_RES_LEN")
 		if err == nil && len(res.Message) > i {
 			dispError(w, "本文が長すぎます!")
@@ -88,12 +75,22 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			dispError(w, "本文が空です!")
 			return
 		}
-
-		if sv.Function.IDGenerator != nil { // もしID生成器が別で指定されていれば
-			res.ID = sv.Function.IDGenerator(r.RemoteAddr)
-		} else {
-			res.ID = GenerateID(r.RemoteAddr) // ID生成
+		if !th.Writable() {
+			dispError(w, "このスレッドは書き込みできる数を超えました。\n新しいスレッドを立ててください。")
+			return
 		}
+
+		res.thread = th
+		if res.From == "" {
+			s, err := th.Conf.GetString("NONAME")
+			if err == nil {
+				res.From = s
+			} else {
+				res.From = "Noname"
+			}
+		}
+
+		res.ID = GenerateID(r.RemoteAddr) // ID生成
 
 		if sv.Function.WriteChecker != nil {
 			if ok, reason := sv.Function.WriteChecker(res); !ok {
@@ -102,12 +99,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 
-		if !th.Writable() {
-			dispError(w, "このスレッドは書き込みできる数を超えました。\n新しいスレッドを立ててください。")
-			return
-		} else {
-			th.AddRes(res)
-		}
+		th.AddRes(res)
 
 		if res.Subject != "" { //新規スレの場合にルール生成
 			if sv.Function.RuleGenerator != nil {

@@ -27,7 +27,6 @@ type Server struct {
 
 	Conf     config.Config
 	Function struct {
-		IDGenerator func(string) []byte
 		// NGとか
 		WriteChecker   func(*Res) (bool, string) //res (ok,reason)
 		ArchiveChecker func(*Thread) bool
