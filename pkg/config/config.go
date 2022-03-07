@@ -68,31 +68,63 @@ func (c *Config) Get(k string, to interface{}) error {
 	return nil
 }
 
+func (c *Config) GetRaw(k string) (interface{}, error) {
+	v, ok := c.vals[k]
+	if !ok {
+		if c.parent != nil {
+			return c.parent.GetRaw(k)
+		}
+		return nil, errors.New("no such key")
+	}
+	return v, nil
+}
+
 func (c *Config) GetInt(k string) (int, error) {
-	var i int
-	err := c.Get(k, &i)
+	v, err := c.GetRaw(k)
 	if err != nil {
 		return 0, err
+	}
+	i, ok := v.(int)
+	if !ok {
+		return 0, errors.New("type mismatch")
 	}
 	return i, nil
 }
 
 func (c *Config) GetFloat64(k string) (float64, error) {
-	var i float64
-	err := c.Get(k, &i)
+	v, err := c.GetRaw(k)
 	if err != nil {
 		return 0, err
 	}
-	return i, nil
+	f, ok := v.(float64)
+	if !ok {
+		return 0, errors.New("type mismatch")
+	}
+	return f, nil
 }
 
 func (c *Config) GetString(k string) (string, error) {
-	var i string
-	err := c.Get(k, &i)
+	v, err := c.GetRaw(k)
 	if err != nil {
 		return "", err
 	}
-	return i, nil
+	s, ok := v.(string)
+	if !ok {
+		return "", errors.New("type mismatch")
+	}
+	return s, nil
+}
+
+func (c *Config) GetBool(k string) (bool, error) {
+	v, err := c.GetRaw(k)
+	if err != nil {
+		return false, err
+	}
+	b, ok := v.(bool)
+	if !ok {
+		return false, errors.New("type mismatch")
+	}
+	return b, nil
 }
 
 func (c *Config) Set(k string, from interface{}) error {

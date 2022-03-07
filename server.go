@@ -92,7 +92,6 @@ func (sv *Server) Init(dir string) *Server {
 		keys := searchdats(sv.Dir + "/" + bbs.bbs + "/dat")
 		for _, key := range keys { //スレ情報読み込み
 			th := NewThread(key)
-			bbs.AddThread(th)
 			th.dat = readalltxt(sv.Dir + "/" + bbs.bbs + "/dat/" + key + ".dat")
 			th.num = uint(strings.Count(th.dat, "\n"))
 			tmp := strings.SplitN(th.dat, "\n", 2)[0]
@@ -109,6 +108,7 @@ func (sv *Server) Init(dir string) *Server {
 			} else {
 				th.lastmod = info.ModTime()
 			}
+			bbs.AddThread(th)
 
 			if sv.Function.RuleGenerator != nil {
 				sv.Function.RuleGenerator(th)
