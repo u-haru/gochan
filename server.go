@@ -1,7 +1,6 @@
 package gochan
 
 import (
-	"errors"
 	"io/fs"
 	"log"
 	"net"
@@ -103,10 +102,10 @@ func (sv *Server) SetLocation(loc string) error {
 func (sv *Server) AddBoard(bd *board) error {
 	bd.server = sv
 	if bd.bbs == "" {
-		return errors.New("board.bbs is empty")
+		return ErrInvalidBBS
 	}
 	if _, ok := sv.boards[bd.bbs]; ok {
-		return errors.New("bbs already exists")
+		return ErrBBSExists
 	}
 	bd.Conf.SetParent(&sv.Conf)
 
@@ -131,7 +130,7 @@ func (sv *Server) NewBoard(bbs, title string) {
 func (sv *Server) DeleteBoard(bbs string) error {
 	os.RemoveAll(sv.Dir + "/" + bbs)
 	if _, ok := sv.boards[bbs]; !ok {
-		return errors.New("no such board")
+		return ErrBBSNotExists
 	}
 	delete(sv.boards, bbs)
 	return nil

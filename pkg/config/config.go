@@ -13,6 +13,13 @@ type Config struct {
 	parent *Config
 }
 
+var (
+	errNoKey        = errors.New("no such key")
+	errNotPointer   = errors.New("it's not pointer")
+	errTypeMismatch = errors.New("type mismatch")
+	errNotSettable  = errors.New("it cannot be set")
+)
+
 func (c *Config) LoadJson(from io.Reader) error {
 	js, err := io.ReadAll(from)
 	if err != nil {
@@ -48,20 +55,20 @@ func (c *Config) Get(k string, to interface{}) error {
 		if c.parent != nil {
 			return c.parent.Get(k, to)
 		}
-		return errors.New("no such key")
+		return errNoKey
 	}
 
 	rt := reflect.ValueOf(to)
 	if rt.IsNil() || rt.Kind() != reflect.Ptr {
-		return errors.New(reflect.TypeOf(to).String() + " isn't pointer")
+		return errNotPointer
 	}
 	p := rt.Elem()
 	rv := reflect.TypeOf(v)
 	if t := p.Type(); t != rv && t.Kind() != reflect.Interface {
-		return errors.New(rt.String() + " isn't type " + rv.String())
+		return errTypeMismatch
 	}
 	if !p.CanSet() {
-		return errors.New(rt.String() + " cannot be set")
+		return errNotSettable
 	}
 
 	p.Set(reflect.ValueOf(v))
@@ -74,7 +81,7 @@ func (c *Config) GetRaw(k string) (interface{}, error) {
 		if c.parent != nil {
 			return c.parent.GetRaw(k)
 		}
-		return nil, errors.New("no such key")
+		return nil, errNoKey
 	}
 	return v, nil
 }
@@ -86,7 +93,7 @@ func (c *Config) GetInt(k string) (int, error) {
 	}
 	i, ok := v.(int)
 	if !ok {
-		return 0, errors.New("type mismatch")
+		return 0, errTypeMismatch
 	}
 	return i, nil
 }
@@ -98,7 +105,7 @@ func (c *Config) GetFloat64(k string) (float64, error) {
 	}
 	f, ok := v.(float64)
 	if !ok {
-		return 0, errors.New("type mismatch")
+		return 0, errTypeMismatch
 	}
 	return f, nil
 }
@@ -110,7 +117,7 @@ func (c *Config) GetString(k string) (string, error) {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return "", errors.New("type mismatch")
+		return "", errTypeMismatch
 	}
 	return s, nil
 }
@@ -122,7 +129,7 @@ func (c *Config) GetBool(k string) (bool, error) {
 	}
 	b, ok := v.(bool)
 	if !ok {
-		return false, errors.New("type mismatch")
+		return false, errTypeMismatch
 	}
 	return b, nil
 }

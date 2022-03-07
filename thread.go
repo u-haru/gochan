@@ -1,7 +1,6 @@
 package gochan
 
 import (
-	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -43,7 +42,7 @@ func (th *Thread) AddRes(res *Res) {
 func (th *Thread) DeleteRes(num int) error {
 	tmp := strings.SplitN(th.dat, "\n", num)
 	if len(tmp) < num {
-		return errors.New("no such res")
+		return ErrResNotExists
 	}
 	targetres := tmp[num-1]
 	tmp = strings.Split(targetres, "<>")
@@ -59,7 +58,7 @@ func (th *Thread) DeleteRes(num int) error {
 func (th *Thread) GetRes(num int) (*Res, error) {
 	tmp := strings.SplitN(th.dat, "\n", num)
 	if len(tmp) < num {
-		return nil, errors.New("no such res")
+		return nil, ErrResNotExists
 	}
 	targetres := toUTF(tmp[num-1])
 	tmp = strings.Split(targetres, "<>")

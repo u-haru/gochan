@@ -1,7 +1,6 @@
 package gochan
 
 import (
-	"errors"
 	"log"
 	"os"
 	"path/filepath"
@@ -33,10 +32,10 @@ func NewBoard(bbs string) *board {
 func (bd *board) AddThread(th *Thread) error {
 	th.board = bd
 	if th.key == "" {
-		return errors.New("thread.key is empty")
+		return ErrInvalidKey
 	}
 	if _, ok := bd.threads[th.key]; ok {
-		return errors.New("key already exists")
+		return ErrKeyExists
 	}
 	th.Conf.SetParent(&bd.Conf)
 
@@ -48,7 +47,7 @@ func (bd *board) AddThread(th *Thread) error {
 func (bd *board) DeleteThread(key string) error {
 	os.Remove(bd.server.Dir + "/" + bd.bbs + "/dat/" + key + ".dat")
 	if _, ok := bd.threads[key]; !ok {
-		return errors.New("no such thread")
+		return ErrKeyNotExists
 	}
 	delete(bd.threads, key)
 	bd.refresh_subjects()
