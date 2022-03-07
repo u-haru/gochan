@@ -225,10 +225,9 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 
 func dispError(w http.ResponseWriter, stat string) {
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-	title := "ERROR!"
 	body := Escape.Replace(toSJIS(stat))
 	fmt.Fprint(w, `<head>
-	<title>`+title+`</title>
+	<title>ERROR!</title>
 	</head>
 	<body>`+body+`
 	</body>

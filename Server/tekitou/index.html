@@ -79,7 +79,7 @@
         return `<div class="common">${key?"書き込み欄":"新規スレッド作成"}</div>
             <div style="margin: 0.5em 0 0 2em; font-size: 0.75em;">
                 <form method="POST" action="/test/bbs.cgi">
-                    <input type="submit" value="${key?"書き込み":"新規スレッド"}" name="submit"><br>
+                    <input type="submit" value="${key?"書き込み":"新規スレッド"}"><br>
                     ${!key?`スレッドタイトル：<input type="text" name="subject" style="width: 24em;"><br>`:""}
                     名前：<input type="text" name="FROM" style="width: 16em;"> E-mail：<input type="text" name="mail"
                         style="width: 16em;"><br>

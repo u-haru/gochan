@@ -4,9 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/u-haru/gochan"
@@ -44,11 +47,39 @@ func main() {
 	os.Exit(130)
 }
 
+var list struct {
+	sync.Mutex
+	messager map[string]time.Time
+}
+
 func messageChecker(res *gochan.Res) (bool, string) {
 	// if strings.Contains(res.Message, "ハゲ") {
 	// 	return false, "ハゲじゃねえわ"
 	// }
 	// res.Message = strings.ReplaceAll(res.Message, "test", "テスト")
+
+	if c, err := res.Req.Cookie("AcceptRule"); err != nil || c.Value != "true" {
+		http.SetCookie(res.Writer, &http.Cookie{
+			Name:    "AcceptRule",
+			Value:   "true",
+			Path:    res.Thread().Board().BBS(),
+			Expires: time.Now().Add(time.Hour * 24),
+		})
+		return false, "書き込んでもよろしいですか?\n書き込みに対し本サイトはいかなる責任も負いません。今後行われた書き込みに対しては、この規約に同意したものとみなします。\n書き込みを行う場合はページを再読み込みしてください。"
+	}
+
+	v, ok := list.messager[strings.Split(res.Req.RemoteAddr, ":")[0]]
+	if ok {
+		if v.Add(time.Second * 5).After(res.Date) { //前回の書き込みから5秒以内
+			return false, "マルチポストですか?"
+		}
+	}
+	list.Lock()
+	if list.messager == nil {
+		list.messager = make(map[string]time.Time)
+	}
+	list.messager[strings.Split(res.Req.RemoteAddr, ":")[0]] = res.Date
+	list.Unlock()
 
 	f, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
