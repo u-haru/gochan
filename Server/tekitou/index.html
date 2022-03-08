@@ -1,18 +1,18 @@
 <html>
 
 <head>
-    <title>“K“–‚È”Â</title>
+    <title>é©å½“ãªæ¿</title>
     <meta charset="Shift_JIS">
 </head>
 
 <body>
     <noscript>
-        ‚±‚ÌŒf¦”Â‚ÍJavascript‚ğg—p‚µ‚Ä‚¢‚Ü‚·<br>
-        ê—pƒuƒ‰ƒEƒU‚Ìg—p‚ğ„§‚µ‚Ä‚¢‚Ü‚·<br>
+        ã“ã®æ²ç¤ºæ¿ã¯Javascriptã‚’ä½¿ç”¨ã—ã¦ã„ã¾ã™<br>
+        å°‚ç”¨ãƒ–ãƒ©ã‚¦ã‚¶ã®ä½¿ç”¨ã‚’æ¨å¥¨ã—ã¦ã„ã¾ã™<br>
     </noscript>
     <div class="list">
         <div class="box head" id="thread_catalog">
-            <div class="common">‚±‚Ì”Â‚Ìå‚ÈƒXƒŒƒbƒh</div>
+            <div class="common">ã“ã®æ¿ã®ä¸»ãªã‚¹ãƒ¬ãƒƒãƒ‰</div>
             <div class="thread_menu" id="thread_menu">
             </div>
         </div>
@@ -23,7 +23,7 @@
         <div class="box foot" id="writing_area">
             
         </div>
-        <a href="./"><b>ƒz[ƒ€</b></a>
+        <a href="./"><b>ãƒ›ãƒ¼ãƒ </b></a>
     </div>
 </body>
 <script>
@@ -76,12 +76,12 @@
     }
     function postarea(key){
         const bbs = location.pathname.split("/")[1]
-        return `<div class="common">${key?"‘‚«‚İ—“":"V‹KƒXƒŒƒbƒhì¬"}</div>
+        return `<div class="common">${key?"æ›¸ãè¾¼ã¿æ¬„":"æ–°è¦ã‚¹ãƒ¬ãƒƒãƒ‰ä½œæˆ"}</div>
             <div style="margin: 0.5em 0 0 2em; font-size: 0.75em;">
                 <form method="POST" action="/test/bbs.cgi">
-                    <input type="submit" value="${key?"‘‚«‚İ":"V‹KƒXƒŒƒbƒh"}"><br>
-                    ${!key?`ƒXƒŒƒbƒhƒ^ƒCƒgƒ‹F<input type="text" name="subject" style="width: 24em;"><br>`:""}
-                    –¼‘OF<input type="text" name="FROM" style="width: 16em;"> E-mailF<input type="text" name="mail"
+                    <input type="submit" value="${key?"æ›¸ãè¾¼ã¿":"æ–°è¦ã‚¹ãƒ¬ãƒƒãƒ‰"}"><br>
+                    ${!key?`ã‚¹ãƒ¬ãƒƒãƒ‰ã‚¿ã‚¤ãƒˆãƒ«ï¼š<input type="text" name="subject" style="width: 24em;"><br>`:""}
+                    åå‰ï¼š<input type="text" name="FROM" style="width: 16em;"> E-mailï¼š<input type="text" name="mail"
                         style="width: 16em;"><br>
                     <textarea style="min-width: 40em; height: 10.0em; word-wrap: break-word;" rows="4" cols="12"
                         name="MESSAGE"></textarea>

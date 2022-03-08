@@ -156,14 +156,14 @@ func (sv *Server) Serve(ln net.Listener) error {
 		if strings.Contains(r.URL.Path, "/dat/") { //dat
 			sv.dat(w, r)
 			return
-		} else if strings.Contains(r.URL.Path, "/subject.txt") { //subject.txt
+		} else if strings.HasSuffix(r.URL.Path, "/subject.txt") { //subject.txt
 			sv.sub(w, r)
+			return
+		} else if strings.HasSuffix(strings.ToLower(r.URL.Path), "/setting.txt") { //setting.txt
+			sv.setting(w, r)
 			return
 		}
 
-		if strings.HasSuffix(r.URL.Path, "/") || strings.HasSuffix(r.URL.Path, ".html") {
-			w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-		}
 		http.ServeFile(w, r, sv.Dir+r.URL.Path)
 	})
 	return http.Serve(ln, sv.httpserver)

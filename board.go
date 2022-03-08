@@ -1,6 +1,7 @@
 package gochan
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ type board struct {
 	threads map[string]*Thread
 	Conf    config.Config
 	subject string
+	setting string
 	server  *Server
 	lastmod time.Time
 	sync.RWMutex
@@ -82,8 +84,14 @@ func (bd *board) readSettings() {
 }
 
 func (bd *board) reloadSettings() {
-
+	bd.Lock()
+	bd.setting = ""
+	title, _ := bd.Conf.GetString("TITLE")
+	title = toSJIS(title)
+	bd.setting += fmt.Sprintf("BBS_TITLE=%s\nBBS_TITLE_ORIG=%s", title, title)
+	bd.Unlock()
 }
+
 func (bd *board) BBS() string {
 	return bd.bbs
 }

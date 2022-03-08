@@ -223,6 +223,21 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	}
 }
 
+func (sv *Server) setting(w http.ResponseWriter, r *http.Request) { //setting.txt
+	path := r.URL.Path[1:]
+	path = strings.TrimSuffix(path, "/")
+	bbs := strings.Split(path, "/")[0]
+	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
+	// w.Header().Set("Cache-Control", "no-cache")//別にキャッシュされても困らない
+	if bd, ok := sv.boards[bbs]; ok {
+		bd.RLock()
+		http.ServeContent(w, r, "/"+bbs+"/setting.txt", bd.lastmod, strings.NewReader(bd.setting)) //回数多いためServeContentでキャッシュ保存
+		bd.RUnlock()
+	} else {
+		dispError(w, "bbsが不正です!")
+	}
+}
+
 func dispError(w http.ResponseWriter, stat string) {
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
 	body := Escape.Replace(toSJIS(stat))
