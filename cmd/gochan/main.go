@@ -48,11 +48,28 @@ func main() {
 }
 
 var list struct {
-	sync.Mutex
+	sync.RWMutex
 	messager map[string]time.Time
+	sync.Once
 }
 
 func messageChecker(res *gochan.Res) (bool, string) {
+	list.Do(func() {
+		go func() {
+			for {
+				<-time.After(time.Second * 10)
+				now := time.Now()
+				for s, v := range list.messager {
+					if v.Add(time.Second * 10).After(now) {
+						list.Lock()
+						delete(list.messager, s)
+						list.Unlock()
+					}
+				}
+				// log.Println("Wiped")
+			}
+		}()
+	})
 	// if strings.Contains(res.Message, "ハゲ") {
 	// 	return false, "ハゲじゃねえわ"
 	// }
