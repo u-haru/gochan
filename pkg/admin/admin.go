@@ -131,14 +131,16 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(r.URL.Path, "/boardList"):
 		{
 			type bd struct {
-				BBS   string `json:"bbs,omitempty"`
-				Title string `json:"title,omitempty"`
+				BBS     string `json:"bbs,omitempty"`
+				Title   string `json:"title,omitempty"`
+				Baseurl string `json:"baseurl,omitempty"`
 			}
 			var boards []bd
 			for _, v := range abd.Server.Boards() {
 				boards = append(boards, bd{
-					BBS:   v.BBS(),
-					Title: v.Title(),
+					BBS:     v.BBS(),
+					Title:   v.Title(),
+					Baseurl: v.Server().Baseurl,
 				})
 			}
 			stat.Status = "Success"

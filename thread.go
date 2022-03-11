@@ -124,3 +124,9 @@ func (th *Thread) Board() *board {
 func (th *Thread) Lastmod() time.Time {
 	return th.lastmod
 }
+func (th *Thread) URL() string {
+	return th.board.URL() + "dat/" + th.key + ".dat"
+}
+func (th *Thread) Path() string {
+	return th.board.Path() + "dat/" + th.key + ".dat"
+}

@@ -18,6 +18,8 @@ type Server struct {
 	Dir    string
 	boards map[string]*board
 
+	Baseurl string
+
 	location     time.Location
 	HTTPServeMux http.ServeMux
 
@@ -28,6 +30,7 @@ type Server struct {
 		ArchiveChecker func(*Thread) bool
 		RuleGenerator  func(*Thread)
 	}
+	BBSMENU
 }
 
 type Res struct {
@@ -47,14 +50,21 @@ func (sv *Server) Init(dir string) {
 	if sv.boards == nil {
 		sv.boards = make(map[string]*board)
 	}
+	if !strings.HasSuffix(sv.Baseurl, "/") {
+		sv.Baseurl = sv.Baseurl + "/"
+	}
+	if !strings.HasSuffix(sv.Dir, "/") {
+		sv.Dir = sv.Dir + "/"
+	}
 	sv.searchboards()
 
 	for bbs, bd := range sv.boards { //板情報読み取り
 		log.Println("board found: " + bbs)
-		keys := searchdats(sv.Dir + "/" + bbs + "/dat")
+		keys := searchdats(bd.Path() + "dat")
 		for _, key := range keys { //スレ情報読み込み
 			th := NewThread(key)
-			th.dat = readalltxt(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+			bd.AddThread(th)
+			th.dat = readalltxt(th.Path())
 			th.num = uint(strings.Count(th.dat, "\n"))
 			tmp := strings.SplitN(th.dat, "\n", 2)[0]
 			th.title = strings.Split(toUTF(tmp), "<>")[4]
@@ -64,13 +74,12 @@ func (sv *Server) Init(dir string) {
 			utime, _ := strconv.Atoi(key) //エラーでもどうせ0になるだけなので無視
 			th.firstmod = time.Unix(int64(utime), 0)
 
-			info, err := readfileinfo(sv.Dir + "/" + bbs + "/dat/" + key + ".dat")
+			info, err := readfileinfo(th.Path())
 			if err != nil {
 				log.Println(err)
 			} else {
 				th.lastmod = info.ModTime()
 			}
-			bd.AddThread(th)
 
 			if sv.Function.RuleGenerator != nil {
 				sv.Function.RuleGenerator(th)
@@ -86,6 +95,8 @@ func (sv *Server) Init(dir string) {
 	sv.Conf.Set("MAX_RES", 1000)
 	sv.Conf.Set("MAX_RES_LEN", 2048)
 	sv.Conf.Set("SUBJECT_MAXLEN", 30)
+
+	sv.GenBBSmenu()
 }
 
 func (sv *Server) SetLocation(loc string) error {
@@ -114,7 +125,7 @@ func (sv *Server) AddBoard(bd *board) error {
 
 func (sv *Server) NewBoard(bbs, title string) {
 	if !exists(sv.Dir + "/" + bbs) {
-		os.MkdirAll(sv.Dir+"/"+bbs+"/dat/", 0755)
+		os.MkdirAll(sv.Dir+bbs+"/dat/", 0755)
 	}
 	bd := NewBoard(bbs)
 	sv.AddBoard(bd)
@@ -126,7 +137,7 @@ func (sv *Server) NewBoard(bbs, title string) {
 }
 
 func (sv *Server) DeleteBoard(bbs string) error {
-	os.RemoveAll(sv.Dir + "/" + bbs)
+	os.RemoveAll(sv.Dir + bbs)
 	if _, ok := sv.boards[bbs]; !ok {
 		return ErrBBSNotExists
 	}
@@ -147,7 +158,7 @@ func (sv *Server) ListenAndServe(host string) error {
 
 func (sv *Server) Serve(ln net.Listener) error {
 	sv.HTTPServeMux.HandleFunc("/test/bbs.cgi", sv.bbs)
-	sv.HTTPServeMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	sv.HTTPServeMux.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/dat/") { //dat
 			sv.dat(w, r)
 			return
@@ -158,8 +169,14 @@ func (sv *Server) Serve(ln net.Listener) error {
 			sv.setting(w, r)
 			return
 		}
-
-		http.ServeFile(w, r, sv.Dir+r.URL.Path)
+		http.ServeFile(w, r, sv.Dir+strings.TrimPrefix(r.URL.Path, sv.Baseurl))
+	})
+	sv.HTTPServeMux.HandleFunc(sv.Baseurl+"bbsmenu.html", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
+		http.ServeContent(w, r, sv.Baseurl+"bbsmenu.html", sv.BBSMENU.lastmod, strings.NewReader(sv.BBSMENU.HTML))
+	})
+	sv.HTTPServeMux.HandleFunc(sv.Baseurl+"bbsmenu.json", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeContent(w, r, sv.Baseurl+"bbsmenu.json", sv.BBSMENU.lastmod, strings.NewReader(sv.BBSMENU.JSON))
 	})
 	return http.Serve(ln, &sv.HTTPServeMux)
 }
@@ -231,7 +248,7 @@ func readfileinfo(name string) (fs.FileInfo, error) {
 func (sv *Server) Save() {
 	for bbs, b := range sv.boards {
 		for _, t := range b.threads {
-			path := sv.Dir + "/" + bbs + "/dat/"
+			path := sv.Dir + bbs + "/dat/"
 			t.Save(path, sv.location)
 		}
 	}
@@ -242,4 +259,8 @@ func (sv *Server) Boards() map[string]*board {
 
 func (rs *Res) Thread() *Thread {
 	return rs.thread
+}
+
+func (sv *Server) Path() string {
+	return sv.Dir
 }

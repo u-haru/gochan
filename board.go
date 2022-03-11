@@ -47,9 +47,10 @@ func (bd *board) AddThread(th *Thread) error {
 }
 
 func (bd *board) DeleteThread(key string) error {
-	os.Remove(bd.server.Dir + "/" + bd.bbs + "/dat/" + key + ".dat")
-	if _, ok := bd.threads[key]; !ok {
+	if th, ok := bd.threads[key]; !ok {
 		return ErrKeyNotExists
+	} else {
+		os.Remove(th.Path())
 	}
 	delete(bd.threads, key)
 	bd.refresh_subjects()
@@ -57,7 +58,7 @@ func (bd *board) DeleteThread(key string) error {
 }
 
 func (bd *board) saveSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.json")
+	path := filepath.Clean(bd.Path() + "setting.json")
 	file, err := os.Create(path)
 	if err != nil {
 		log.Println(err)
@@ -71,7 +72,7 @@ func (bd *board) saveSettings() {
 }
 
 func (bd *board) readSettings() {
-	path := filepath.Clean(bd.server.Dir + "/" + bd.bbs + "/setting.json")
+	path := filepath.Clean(bd.Path() + "setting.json")
 	f, err := os.Open(path)
 	if err != nil {
 		return
@@ -102,4 +103,16 @@ func (bd *board) BBS() string {
 
 func (bd *board) Title() string {
 	return bd.title
+}
+
+func (bd *board) Server() *Server {
+	return bd.server
+}
+
+func (bd *board) URL() string {
+	return bd.server.Baseurl + bd.bbs + "/"
+}
+
+func (bd *board) Path() string {
+	return bd.server.Dir + bd.bbs + "/"
 }

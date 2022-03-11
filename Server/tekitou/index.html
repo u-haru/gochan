@@ -75,7 +75,8 @@
         xhr.send();
     }
     function postarea(key){
-        const bbs = location.pathname.split("/")[1]
+        const spl = location.pathname.split("/")
+        const bbs = spl[spl.length-2]
         return `<div class="common">${key?"書き込み欄":"新規スレッド作成"}</div>
             <div style="margin: 0.5em 0 0 2em; font-size: 0.75em;">
                 <form method="POST" action="/test/bbs.cgi" accept-charset="Shift-JIS">

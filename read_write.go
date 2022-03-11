@@ -28,7 +28,7 @@ var wdays = []string{"日", "月", "火", "水", "木", "金", "土"}
 var written = toSJIS(`<html>
 		<head>
 		<title>書きこみました。</title>
-		<meta http-equiv="refresh" content="1;URL=/%s/?key=%s">
+		<meta http-equiv="refresh" content="1;URL=%s/?key=%s">
 		</head>
 		<body>書きこみが終わりました。<br>
 		画面を切り替えるまでしばらくお待ち下さい。
@@ -113,7 +113,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		}
 
 		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-		fmt.Fprintf(w, written, bbs, key)
+		fmt.Fprintf(w, written, sv.Baseurl+bbs, key)
 		board.refresh_subjects()
 	}
 }
@@ -180,20 +180,20 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 		dispError(w, "Bad Request!")
 		return
 	}
-	bbs := strs[0]
-	dotpos := strings.LastIndex(strs[2], ".dat")
+	bbs := strs[len(strs)-3]
+	dotpos := strings.LastIndex(strs[len(strs)-1], ".dat")
 	if dotpos < 0 {
 		dispError(w, "keyが不正です!")
 		return
 	}
-	key := strs[2][:dotpos]
+	key := strs[len(strs)-1][:dotpos]
 
 	if bd, ok := sv.boards[bbs]; ok {
 		if th, ok := bd.threads[key]; ok {
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 			w.Header().Set("Cache-Control", "no-cache") //last-modified等で確認取れない限り再取得
 			th.RLock()
-			http.ServeContent(w, r, "/"+bbs+"/dat/"+key+".dat", th.lastmod, strings.NewReader(th.dat)) //回数多いためServeContentでキャッシュ保存
+			http.ServeContent(w, r, th.Path(), th.lastmod, strings.NewReader(th.dat)) //回数多いためServeContentでキャッシュ保存
 			th.RUnlock()
 
 			if sv.Function.ArchiveChecker != nil {
@@ -210,12 +210,17 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	path := r.URL.Path[1:]
 	path = strings.TrimSuffix(path, "/")
-	bbs := strings.Split(path, "/")[0]
+	strs := strings.Split(path, "/")
+	if len(strs) < 2 {
+		dispError(w, "Bad Request!")
+		return
+	}
+	bbs := strs[len(strs)-2]
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	w.Header().Set("Cache-Control", "no-cache")
 	if bd, ok := sv.boards[bbs]; ok {
 		bd.RLock()
-		http.ServeContent(w, r, "/"+bbs+"/subject.txt", bd.lastmod, strings.NewReader(bd.subject)) //回数多いためServeContentでキャッシュ保存
+		http.ServeContent(w, r, bd.Path()+"subject.txt", bd.lastmod, strings.NewReader(bd.subject)) //回数多いためServeContentでキャッシュ保存
 		bd.RUnlock()
 	} else {
 		dispError(w, "bbsが不正です!")
@@ -230,7 +235,7 @@ func (sv *Server) setting(w http.ResponseWriter, r *http.Request) { //setting.tx
 	// w.Header().Set("Cache-Control", "no-cache")//別にキャッシュされても困らない
 	if bd, ok := sv.boards[bbs]; ok {
 		bd.RLock()
-		http.ServeContent(w, r, "/"+bbs+"/setting.txt", bd.lastmod, strings.NewReader(bd.setting)) //回数多いためServeContentでキャッシュ保存
+		http.ServeContent(w, r, bd.Path()+"setting.txt", bd.lastmod, strings.NewReader(bd.setting)) //回数多いためServeContentでキャッシュ保存
 		bd.RUnlock()
 	} else {
 		dispError(w, "bbsが不正です!")

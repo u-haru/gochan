@@ -35,13 +35,13 @@
     const searchParams = new URLSearchParams(window.location.search);
     const admin = location.pathname.split("/")[1]
     let bbstotitle = {}
-    function getdat(bbs, dat, toppage) {
+    function getdat(baseurl,bbs, dat, toppage) {
         let xhr = new XMLHttpRequest();
 
         let list = document.getElementById("thread_list")
 
         let key = dat.toString().split(".")[0]
-        xhr.open('GET', "/" + bbs + "/dat/" + dat, false);
+        xhr.open('GET', baseurl + bbs + "/dat/" + dat, false);
         xhr.onload = function () {
             let datas = xhr.responseText.split("\n")
             let thread = { "title": "", "res": [] }
@@ -105,15 +105,15 @@
         };
         xhr.send();
     }
-    function loadboard(bbs) {
+    function loadboard(baseurl,bbs) {
         if (searchParams.has("key")) {
             let key = searchParams.get("key")
-            getdat(bbs, searchParams.get("key") + ".dat")
+            getdat(baseurl,bbs, searchParams.get("key") + ".dat")
         } else {
             document.getElementById("thread_catalog").classList.remove("disabled")
             let xhr = new XMLHttpRequest();
             let menu = document.getElementById("thread_menu")
-            xhr.open('GET', "/" + bbs + "/subject.txt");
+            xhr.open('GET', baseurl + bbs + "/subject.txt");
             xhr.send();
             xhr.onload = function () {
                 let datas = xhr.responseText.split("\n")
@@ -122,7 +122,7 @@
                     if (data != "") {
                         let tmp = data.split("<>")
                         let dat = tmp[0]
-                        getdat(bbs, dat, true)
+                        getdat(baseurl,bbs, dat, true)
                         let key = dat.split('.')[0]
                         menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?key=${key}&bbs=${bbs}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
                     }
@@ -148,17 +148,19 @@
         return template.content.firstElementChild;
     }
     window.onload = () => {
-        let boards = getJSON("/" + admin + "/boardList")
+        let boards = getJSON("./boardList")
+        let baseurl
         for (let bd of boards.data) {
+            baseurl = bd.baseurl ?? "/"
             let elem = createElementFromHTML(`<a id="board_${bd.bbs}" href="?bbs=${bd.bbs}">${bd.title}</a>`)
             document.getElementById("board_list").insertAdjacentElement("beforeend", elem)
             elem.addEventListener("click", () => {
-                loadboard(bd.bbs)
+                loadboard(baseurl,bd.bbs)
             })
             bbstotitle[bd.bbs] = bd.title
         }
         if (searchParams.has("bbs")) {
-            loadboard(searchParams.get("bbs"))
+            loadboard(baseurl,searchParams.get("bbs"))
         }
     }
 </script>
