@@ -157,24 +157,31 @@ func (sv *Server) ListenAndServe(host string) error {
 func (sv *Server) Serve(ln net.Listener) error {
 	sv.HTTPServeMux.HandleFunc("/test/bbs.cgi", sv.bbs)
 	sv.HTTPServeMux.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
-		if strings.Contains(r.URL.Path, "/dat/") { //dat
-			sv.dat(w, r)
-			return
-		} else if strings.HasSuffix(r.URL.Path, "/subject.txt") { //subject.txt
-			sv.sub(w, r)
-			return
-		} else if strings.HasSuffix(strings.ToLower(r.URL.Path), "/setting.txt") { //setting.txt
-			sv.setting(w, r)
-			return
+		strs := strings.Split(strings.TrimSuffix(r.URL.Path[1:], "/"), "/")
+
+		switch {
+		case len(strs) >= 3 && strs[len(strs)-2] == "dat":
+			{
+				key := strings.TrimSuffix(strs[len(strs)-1], ".dat")
+				sv.dat(w, r, strs[len(strs)-3], key)
+			}
+		case len(strs) >= 2 && strs[len(strs)-1] == "subject.txt":
+			sv.sub(w, r, strs[len(strs)-2])
+		case len(strs) >= 2 && strings.ToLower(strs[len(strs)-1]) == "setting.txt":
+			sv.setting(w, r, strs[len(strs)-2])
+		case strs[0] == "bbsmenu.html":
+			{
+				w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
+				http.ServeContent(w, r, sv.Baseurl+"bbsmenu.html", sv.BBSMENU.lastmod, strings.NewReader(sv.BBSMENU.HTML))
+			}
+		case strs[0] == "bbsmenu.json":
+			{
+				w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+				http.ServeContent(w, r, sv.Baseurl+"bbsmenu.json", sv.BBSMENU.lastmod, strings.NewReader(sv.BBSMENU.JSON))
+			}
+		default:
+			http.ServeFile(w, r, sv.Dir+strings.TrimPrefix(r.URL.Path, sv.Baseurl))
 		}
-		http.ServeFile(w, r, sv.Dir+strings.TrimPrefix(r.URL.Path, sv.Baseurl))
-	})
-	sv.HTTPServeMux.HandleFunc(sv.Baseurl+"bbsmenu.html", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-		http.ServeContent(w, r, sv.Baseurl+"bbsmenu.html", sv.BBSMENU.lastmod, strings.NewReader(sv.BBSMENU.HTML))
-	})
-	sv.HTTPServeMux.HandleFunc(sv.Baseurl+"bbsmenu.json", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeContent(w, r, sv.Baseurl+"bbsmenu.json", sv.BBSMENU.lastmod, strings.NewReader(sv.BBSMENU.JSON))
 	})
 	return http.Serve(ln, &sv.HTTPServeMux)
 }

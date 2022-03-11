@@ -172,22 +172,7 @@ func GenerateID(remote string) []byte {
 	return b[:]
 }
 
-func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
-	path := r.URL.Path[1:]
-	path = strings.TrimSuffix(path, "/")
-	strs := strings.Split(path, "/")
-	if len(strs) < 3 {
-		dispError(w, "Bad Request!")
-		return
-	}
-	bbs := strs[len(strs)-3]
-	dotpos := strings.LastIndex(strs[len(strs)-1], ".dat")
-	if dotpos < 0 {
-		dispError(w, "keyが不正です!")
-		return
-	}
-	key := strs[len(strs)-1][:dotpos]
-
+func (sv *Server) dat(w http.ResponseWriter, r *http.Request, bbs, key string) { //dat
 	if bd, ok := sv.boards[bbs]; ok {
 		if th, ok := bd.threads[key]; ok {
 			w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
@@ -207,15 +192,7 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request) { //dat
 	}
 }
 
-func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
-	path := r.URL.Path[1:]
-	path = strings.TrimSuffix(path, "/")
-	strs := strings.Split(path, "/")
-	if len(strs) < 2 {
-		dispError(w, "Bad Request!")
-		return
-	}
-	bbs := strs[len(strs)-2]
+func (sv *Server) sub(w http.ResponseWriter, r *http.Request, bbs string) { //subject.txt
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	w.Header().Set("Cache-Control", "no-cache")
 	if bd, ok := sv.boards[bbs]; ok {
@@ -227,10 +204,7 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request) { //subject.txt
 	}
 }
 
-func (sv *Server) setting(w http.ResponseWriter, r *http.Request) { //setting.txt
-	path := r.URL.Path[1:]
-	path = strings.TrimSuffix(path, "/")
-	bbs := strings.Split(path, "/")[0]
+func (sv *Server) setting(w http.ResponseWriter, r *http.Request, bbs string) { //setting.txt
 	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	// w.Header().Set("Cache-Control", "no-cache")//別にキャッシュされても困らない
 	if bd, ok := sv.boards[bbs]; ok {
