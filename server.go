@@ -60,7 +60,7 @@ func (sv *Server) Init(dir string) {
 
 	for bbs, bd := range sv.boards { //板情報読み取り
 		log.Println("board found: " + bbs)
-		keys := searchdats(bd.Path() + "dat")
+		keys, _ := bd.searchdats()
 		for _, key := range keys { //スレ情報読み込み
 			th := NewThread(key)
 			bd.AddThread(th)
@@ -75,9 +75,7 @@ func (sv *Server) Init(dir string) {
 			th.firstmod = time.Unix(int64(utime), 0)
 
 			info, err := readfileinfo(th.Path())
-			if err != nil {
-				log.Println(err)
-			} else {
+			if err == nil {
 				th.lastmod = info.ModTime()
 			}
 
@@ -206,11 +204,10 @@ func (sv *Server) searchboards() {
 	}
 }
 
-func searchdats(datdir string) []string {
-	datdir = filepath.Clean(datdir)
-	files, err := os.ReadDir(datdir)
+func (bd *board) searchdats() ([]string, error) {
+	files, err := os.ReadDir(bd.Path() + "dat")
 	if err != nil {
-		log.Fatal(err)
+		return []string{}, err
 	}
 
 	var paths []string
@@ -222,7 +219,7 @@ func searchdats(datdir string) []string {
 			}
 		}
 	}
-	return paths
+	return paths, nil
 }
 
 func exists(name string) bool {
@@ -238,6 +235,7 @@ func readfileinfo(name string) (fs.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
 	info, err := file.Stat()
 	if err != nil {
 		return nil, err
