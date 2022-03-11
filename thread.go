@@ -1,6 +1,7 @@
 package gochan
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -39,14 +40,19 @@ func (th *Thread) AddRes(res *Res) {
 	th.Unlock()
 }
 
+var abone = toSJIS("あぼーん<>%s<>%s<>あぼーん<>%s")
+
 func (th *Thread) DeleteRes(num int) error {
-	tmp := strings.SplitN(th.dat, "\n", num)
+	tmp := strings.SplitN(th.dat, "\n", num+1)
 	if len(tmp) < num {
 		return ErrResNotExists
 	}
 	targetres := tmp[num-1]
 	tmp = strings.Split(targetres, "<>")
-	replaceres := toSJIS("あぼーん<>" + tmp[1] + "<>" + tmp[2] + "<>あぼーん<>" + tmp[4])
+	replaceres := fmt.Sprintf(abone, tmp[1], tmp[2], tmp[4])
+	if replaceres == "" {
+		return ErrInvalidRes
+	}
 	th.Lock()
 	th.dat = strings.Replace(th.dat, targetres, replaceres, 1)
 	th.lastmod = time.Now()
@@ -72,7 +78,7 @@ func (th *Thread) GetRes(num int) (*Res, error) {
 	return res, nil
 }
 
-func (th *Thread) Save(dir string, location *time.Location) {
+func (th *Thread) Save(dir string, location time.Location) {
 	os.MkdirAll(dir, 0755)
 	path := filepath.Clean(dir + "/" + th.key + ".dat")
 	dat, err := os.Create(path)
@@ -90,7 +96,7 @@ func (th *Thread) Save(dir string, location *time.Location) {
 	lastkakikomidate := strings.Split(kakikomis[len(kakikomis)-2], "<>")[2] //-2なのは最後が空行で終わるから
 	lastkakikomidate = strings.Split(lastkakikomidate, " ID:")[0]
 	lastkakikomidate = lastkakikomidate[:strings.Index(lastkakikomidate, "(")] + lastkakikomidate[strings.Index(lastkakikomidate, ")")+1:]
-	ti, _ := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, location)
+	ti, _ := time.ParseInLocation("2006-01-02 15:04:05.00", lastkakikomidate, &location)
 
 	os.Chtimes(path, ti, ti)
 }

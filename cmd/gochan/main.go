@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/u-haru/gochan"
+	"github.com/u-haru/gochan/pkg/admin"
 )
 
 var (
@@ -25,12 +26,17 @@ func main() {
 	flag.StringVar(&Host, "h", "0.0.0.0:80", "-h [Host]")
 	flag.Parse()
 
-	// Server := gochan.NewServer(Dir)
-	Server := &gochan.Server{}
+	Server := gochan.NewServer()
 	Server.Function.WriteChecker = messageChecker
 	Server.Function.ArchiveChecker = archiveChecker
 	Server.Function.RuleGenerator = RuleGenerator
 
+	ab := &admin.Board{
+		Server: Server,
+		Path:   "/admin/",
+		Hash:   "noauth",
+	}
+	Server.HTTPServeMux.Handle(ab.Path, ab)
 	Server.Init(Dir)
 
 	c := make(chan os.Signal, 1)

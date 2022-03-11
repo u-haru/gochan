@@ -92,6 +92,14 @@ func (bd *board) reloadSettings() {
 	bd.Unlock()
 }
 
+func (bd *board) Threads() map[string]*Thread {
+	return bd.threads
+}
+
 func (bd *board) BBS() string {
 	return bd.bbs
+}
+
+func (bd *board) Title() string {
+	return bd.title
 }
