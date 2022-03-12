@@ -157,7 +157,7 @@ func (sv *Server) ListenAndServe(host string) error {
 func (sv *Server) Serve(ln net.Listener) error {
 	sv.HTTPServeMux.HandleFunc("/test/bbs.cgi", sv.bbs)
 	sv.HTTPServeMux.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
-		strs := strings.Split(strings.TrimSuffix(r.URL.Path[1:], "/"), "/")
+		strs := strings.Split(r.URL.Path[1:], "/")
 
 		switch {
 		case len(strs) >= 3 && strs[len(strs)-2] == "dat":
