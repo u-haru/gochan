@@ -95,7 +95,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			}
 		}
 
-		res.ID = GenerateID(r.RemoteAddr) // ID生成
+		res.ID = sv.GenerateID(strings.Split(r.RemoteAddr, ":")[0]) // ID生成
 
 		if sv.Function.WriteChecker != nil {
 			if ok, reason := sv.Function.WriteChecker(res); !ok {
@@ -152,11 +152,11 @@ func (bd *board) refresh_subjects() {
 }
 
 // 8バイトのランダムな値+1バイトの"0"を返す
-func GenerateID(remote string) []byte {
-	now := time.Now()
-	ip := strings.Split(remote, ":")[0] + now.Format("20060102")
+// 日付でIDが変化する
+func (sv *Server) GenerateID(str string) []byte {
+	str = str + time.Now().In(&sv.location).Format("20060102")
 	h := md5.New()
-	io.WriteString(h, ip) //ip to md5
+	io.WriteString(h, str) //ip to md5
 
 	seed := int64(binary.BigEndian.Uint64(h.Sum(nil)))
 	rn := rand.New(rand.NewSource(seed)) //create local rand
