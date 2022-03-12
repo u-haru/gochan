@@ -26,14 +26,15 @@ var Escape = strings.NewReplacer(
 var wdays = []string{"日", "月", "火", "水", "木", "金", "土"}
 
 var written = toSJIS(`<html>
-		<head>
-		<title>書きこみました。</title>
-		<meta http-equiv="refresh" content="1;URL=%s/?key=%s">
-		</head>
-		<body>書きこみが終わりました。<br>
-		画面を切り替えるまでしばらくお待ち下さい。
-		</body>
-		</html>`)
+<head>
+	<title>書きこみました。</title>
+	<meta http-equiv="refresh" content="1;URL=%s/?key=%s">
+</head>
+<body>
+	書きこみが終わりました。<br>
+	画面を切り替えるまでしばらくお待ち下さい。
+</body>
+</html>`)
 
 func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
 	bbs := toUTF(r.PostFormValue("bbs"))
@@ -185,11 +186,14 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request, bbs, key string) {
 				if ok := sv.Function.ArchiveChecker(th); ok {
 					th.Save(sv.Dir+"/"+bbs+"/kako/", sv.location)
 					bd.DeleteThread(key)
-					return
 				}
 			}
+			return
 		}
+		dispError(w, "keyが不正です!")
+		return
 	}
+	dispError(w, "bbsが不正です!")
 }
 
 func (sv *Server) sub(w http.ResponseWriter, r *http.Request, bbs string) { //subject.txt
@@ -218,13 +222,14 @@ func (sv *Server) setting(w http.ResponseWriter, r *http.Request, bbs string) { 
 
 func dispError(w http.ResponseWriter, stat string) {
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
+	w.WriteHeader(400)
 	body := Escape.Replace(toSJIS(stat))
-	fmt.Fprint(w, `<head>
+	fmt.Fprint(w, `<html>
+	<head>
 	<title>ERROR!</title>
-	</head>
-	<body>`+body+`
-	</body>
-	</html>`)
+</head>
+	<body>`+body+`</body>
+</html>`)
 }
 
 func readalltxt(path string) string {
