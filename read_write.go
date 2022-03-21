@@ -172,7 +172,7 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request, bbs, key string) {
 			th.RUnlock()
 
 			if sv.Function.ArchiveChecker != nil {
-				if ok := sv.Function.ArchiveChecker(th); ok {
+				if ok := sv.Function.ArchiveChecker(th, false); ok {
 					th.Archive()
 				}
 			}

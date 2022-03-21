@@ -147,13 +147,17 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	return true, ""
 }
 
-func archiveChecker(th *gochan.Thread) bool {
+func archiveChecker(th *gochan.Thread, force bool) bool {
+	aable, _ := th.Conf.GetBool("aable")
+	if !aable {
+		return false //アーカイブ出来ないスレは絶対にアーカイブしない(通知とか)
+	}
 	if !th.Writable() {
 		if th.Lastmod().Add(time.Minute * 2).Before(time.Now()) { //スレ落ちから2分経過
 			return true
 		}
 	}
-	return false
+	return force //スレ落ちして無くても強制なら落とす
 }
 
 var noname = regexp.MustCompile("NONAME=(.*)<br>")

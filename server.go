@@ -27,7 +27,7 @@ type Server struct {
 	Function struct {
 		// NGとか
 		WriteChecker   func(*Res) (bool, string) //res (ok,reason)
-		ArchiveChecker func(*Thread) bool
+		ArchiveChecker func(*Thread, bool) bool  // force allows archive without resover
 		RuleGenerator  func(*Thread)
 	}
 	BBSMENU

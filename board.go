@@ -123,14 +123,22 @@ func (bd *board) Squash() error {
 	if len(bd.threads) > m {
 		s := make([]*Thread, 0, len(bd.threads))
 		for _, th := range bd.threads {
-			s = append(s, th)
+			//アーカイブできるスレを列挙
+			if bd.server.Function.ArchiveChecker != nil {
+				if ok := bd.server.Function.ArchiveChecker(th, true); ok {
+					s = append(s, th)
+				}
+			} else {
+				s = append(s, th)
+			}
 		}
-		sort.Slice(s, func(i, j int) bool { return s[i].lastmod.After(s[j].lastmod) })
-
-		for _, th := range s[m:] {
-			th.Archive()
+		if len(s) > m { //
+			sort.Slice(s, func(i, j int) bool { return s[i].lastmod.After(s[j].lastmod) })
+			for _, th := range s[m:] {
+				th.Archive()
+			}
+			bd.refresh_subjects()
 		}
-		bd.refresh_subjects()
 	}
 	return nil
 }
