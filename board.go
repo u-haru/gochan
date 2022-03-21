@@ -47,6 +47,8 @@ func (bd *board) AddThread(th *Thread) error {
 
 	bd.threads[th.key] = th
 
+	bd.Squash()
+
 	return nil
 }
 

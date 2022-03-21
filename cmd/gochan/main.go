@@ -48,14 +48,6 @@ func main() {
 		close(c)
 		os.Exit(130)
 	}()
-	go func() {
-		for {
-			for _, b := range Server.Boards() {
-				b.Squash()
-			}
-			<-time.After(time.Second * 10)
-		}
-	}()
 
 	log.Println("Listening on: " + Host)
 	log.Println(Server.ListenAndServe(Host, Dir))
