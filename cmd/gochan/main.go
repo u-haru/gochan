@@ -59,6 +59,10 @@ var list struct {
 	sync.Once
 }
 
+var triplist map[string]string = map[string]string{
+	"c045526b5ddad91b2f0d13168590f19a7113e347d7681a673ea308aa7dee2f09": "管理人",
+}
+
 func messageChecker(res *gochan.Res) (bool, string) {
 	list.Do(func() {
 		go func() {
@@ -103,6 +107,25 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	}
 	list.messager[strings.Split(res.Req.RemoteAddr, ":")[0]] = res.Date
 	list.Unlock()
+
+	res.From = strings.ReplaceAll(res.From, "★", "☆")
+	pos := strings.Index(res.From, "#")
+	if pos != -1 {
+		if n, ok := triplist[admin.Hash(res.From[pos:])]; ok {
+			res.From = n
+		} else {
+			trip := admin.Hash(res.From[pos:])
+			trip = strings.ToUpper(trip[len(trip)-6:])
+			res.From = fmt.Sprintf("%s★%s", res.From[:pos], trip)
+		}
+	} else {
+		for _, n := range triplist {
+			if strings.Contains(res.From, n) {
+				res.From, _ = res.Thread().Conf.GetString("NONAME")
+				break
+			}
+		}
+	}
 
 	f, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {

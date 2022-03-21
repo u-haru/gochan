@@ -42,7 +42,7 @@ type Board struct {
 	sync.Once
 }
 
-func hash(pass string) string {
+func Hash(pass string) string {
 	salt := []byte("some salt")
 	converted, _ := scrypt.Key([]byte(pass), salt, 16384, 8, 1, 32)
 	return hex.EncodeToString(converted[:])
@@ -71,12 +71,12 @@ func (abd *Board) auth(w http.ResponseWriter, r *http.Request) (authorized bool)
 		}
 		return
 	} else if abd.Hash == "" { //新規
-		abd.Hash = GenHash(username, password)
+		abd.Hash = GenPassHash(username, password)
 		authorized = true
 		return
 	} else if !authorized { //パスワード認証
-		if abd.Hash == GenHash(username, password) { //pass auth
-			key := hash(time.Now().Format("2006-01-02 15:04:05.00"))
+		if abd.Hash == GenPassHash(username, password) { //pass auth
+			key := Hash(time.Now().Format("2006-01-02 15:04:05.00"))
 			expire := time.Now().Add(time.Minute * 10) //10分後に失効
 			http.SetCookie(w, &http.Cookie{
 				Name:   "key",
@@ -91,8 +91,8 @@ func (abd *Board) auth(w http.ResponseWriter, r *http.Request) (authorized bool)
 	}
 	return false
 }
-func GenHash(username, password string) string {
-	return hash(username + password)
+func GenPassHash(username, password string) string {
+	return Hash(username + password)
 }
 
 func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
