@@ -38,13 +38,12 @@ func main() {
 		Hash:   "noauth",
 	}
 	Server.HTTPServeMux.Handle(ab.Path, ab)
-	Server.Init(Dir)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	log.Println("Listening on: " + Host)
 	go func() {
-		log.Println(Server.ListenAndServe(Host))
+		log.Println(Server.ListenAndServe(Host, Dir))
 	}()
 
 	s := <-c

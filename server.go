@@ -45,11 +45,9 @@ type Res struct {
 
 func NewServer() *Server { return new(Server) }
 
-func (sv *Server) Init(dir string) {
+func (sv *Server) init(dir string) {
 	sv.Dir = filepath.Clean(dir)
-	if sv.boards == nil {
-		sv.boards = make(map[string]*board)
-	}
+	sv.boards = make(map[string]*board)
 	if !strings.HasSuffix(sv.Baseurl, "/") {
 		sv.Baseurl = sv.Baseurl + "/"
 	}
@@ -143,7 +141,7 @@ func (sv *Server) DeleteBoard(bbs string) error {
 	return nil
 }
 
-func (sv *Server) ListenAndServe(host string) error {
+func (sv *Server) ListenAndServe(host, dir string) error {
 	if host == "" {
 		host = ":http"
 	}
@@ -151,10 +149,11 @@ func (sv *Server) ListenAndServe(host string) error {
 	if err != nil {
 		return err
 	}
-	return sv.Serve(ln)
+	return sv.Serve(ln, dir)
 }
 
-func (sv *Server) Serve(ln net.Listener) error {
+func (sv *Server) Serve(ln net.Listener, dir string) error {
+	sv.init(dir)
 	sv.HTTPServeMux.HandleFunc("/test/bbs.cgi", sv.bbs)
 	sv.HTTPServeMux.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
 		strs := strings.Split(r.URL.Path[1:], "/")
