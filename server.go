@@ -46,6 +46,9 @@ type Res struct {
 func NewServer() *Server { return new(Server) }
 
 func (sv *Server) init(dir string) {
+	if sv == nil {
+		return
+	}
 	sv.Dir = filepath.Clean(dir)
 	sv.boards = make(map[string]*board)
 	if !strings.HasSuffix(sv.Baseurl, "/") {
@@ -91,11 +94,15 @@ func (sv *Server) init(dir string) {
 	sv.Conf.Set("MAX_RES", 1000)
 	sv.Conf.Set("MAX_RES_LEN", 2048)
 	sv.Conf.Set("SUBJECT_MAXLEN", 30)
+	sv.Conf.Set("MAX_THREAD", 30)
 
 	sv.GenBBSmenu()
 }
 
 func (sv *Server) SetLocation(loc string) error {
+	if sv == nil {
+		return ErrInvalidServer
+	}
 	lo, err := time.LoadLocation(loc)
 	if err != nil {
 		return err
@@ -105,6 +112,9 @@ func (sv *Server) SetLocation(loc string) error {
 }
 
 func (sv *Server) AddBoard(bd *board) error {
+	if sv == nil {
+		return ErrInvalidServer
+	}
 	bd.server = sv
 	if bd.bbs == "" {
 		return ErrInvalidBBS
@@ -133,6 +143,9 @@ func (sv *Server) NewBoard(bbs, title string) {
 }
 
 func (sv *Server) DeleteBoard(bbs string) error {
+	if sv == nil {
+		return ErrInvalidServer
+	}
 	os.RemoveAll(sv.Dir + bbs)
 	if _, ok := sv.boards[bbs]; !ok {
 		return ErrBBSNotExists
@@ -186,6 +199,9 @@ func (sv *Server) Serve(ln net.Listener, dir string) error {
 }
 
 func (sv *Server) searchboards() {
+	if sv == nil {
+		return
+	}
 	dir := filepath.Clean(sv.Dir)
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -211,9 +227,12 @@ func (sv *Server) searchboards() {
 }
 
 func (bd *board) searchdats() ([]string, error) {
+	if bd == nil {
+		return nil, ErrBBSNotExists
+	}
 	files, err := os.ReadDir(bd.Path() + "dat")
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
 
 	var paths []string
@@ -250,21 +269,33 @@ func readfileinfo(name string) (fs.FileInfo, error) {
 }
 
 func (sv *Server) Save() {
+	if sv == nil {
+		return
+	}
 	for bbs, b := range sv.boards {
 		for _, t := range b.threads {
 			path := sv.Dir + bbs + "/dat/"
-			t.Save(path, sv.location)
+			t.Save(path)
 		}
 	}
 }
 func (sv *Server) Boards() map[string]*board {
+	if sv == nil {
+		return nil
+	}
 	return sv.boards
 }
 
 func (rs *Res) Thread() *Thread {
+	if rs == nil {
+		return nil
+	}
 	return rs.thread
 }
 
 func (sv *Server) Path() string {
+	if sv == nil {
+		return ""
+	}
 	return sv.Dir
 }

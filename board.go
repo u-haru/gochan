@@ -32,6 +32,9 @@ func NewBoard(bbs string) *board {
 }
 
 func (bd *board) AddThread(th *Thread) error {
+	if bd == nil {
+		return ErrBBSNotExists
+	}
 	th.board = bd
 	if th.key == "" {
 		return ErrInvalidKey
@@ -47,17 +50,23 @@ func (bd *board) AddThread(th *Thread) error {
 }
 
 func (bd *board) DeleteThread(key string) error {
+	if bd == nil {
+		return ErrBBSNotExists
+	}
 	if th, ok := bd.threads[key]; !ok {
 		return ErrKeyNotExists
 	} else {
+		delete(bd.threads, key)
 		os.Remove(th.Path())
 	}
-	delete(bd.threads, key)
 	bd.refresh_subjects()
 	return nil
 }
 
 func (bd *board) saveSettings() {
+	if bd == nil {
+		return
+	}
 	path := filepath.Clean(bd.Path() + "setting.json")
 	file, err := os.Create(path)
 	if err != nil {
@@ -72,6 +81,9 @@ func (bd *board) saveSettings() {
 }
 
 func (bd *board) readSettings() {
+	if bd == nil {
+		return
+	}
 	path := filepath.Clean(bd.Path() + "setting.json")
 	f, err := os.Open(path)
 	if err != nil {
@@ -85,6 +97,9 @@ func (bd *board) readSettings() {
 }
 
 func (bd *board) reloadSettings() {
+	if bd == nil {
+		return
+	}
 	bd.Lock()
 	title, _ := bd.Conf.GetString("TITLE")
 	title = toSJIS(title)
@@ -95,25 +110,43 @@ func (bd *board) reloadSettings() {
 }
 
 func (bd *board) Threads() map[string]*Thread {
+	if bd == nil {
+		return nil
+	}
 	return bd.threads
 }
 
 func (bd *board) BBS() string {
+	if bd == nil {
+		return ""
+	}
 	return bd.bbs
 }
 
 func (bd *board) Title() string {
+	if bd == nil {
+		return ""
+	}
 	return bd.title
 }
 
 func (bd *board) Server() *Server {
+	if bd == nil {
+		return nil
+	}
 	return bd.server
 }
 
 func (bd *board) URL() string {
+	if bd == nil {
+		return ""
+	}
 	return bd.server.Baseurl + bd.bbs + "/"
 }
 
 func (bd *board) Path() string {
+	if bd == nil {
+		return ""
+	}
 	return bd.server.Dir + bd.bbs + "/"
 }

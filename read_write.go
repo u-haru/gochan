@@ -184,8 +184,7 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request, bbs, key string) {
 
 			if sv.Function.ArchiveChecker != nil {
 				if ok := sv.Function.ArchiveChecker(th); ok {
-					th.Save(sv.Dir+"/"+bbs+"/kako/", sv.location)
-					bd.DeleteThread(key)
+					th.Archive()
 				}
 			}
 			return

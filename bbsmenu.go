@@ -35,8 +35,8 @@ type BBSMENU struct {
 }
 
 func (sv *Server) GenBBSmenu() error {
-	if sv.boards == nil {
-		return ErrBBSNotExists
+	if sv == nil || sv.boards == nil {
+		return ErrInvalidServer
 	}
 	var bbsmenu bbsmenu_s
 	sv.BBSMENU.lastmod = time.Now()

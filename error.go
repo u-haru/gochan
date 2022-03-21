@@ -3,6 +3,8 @@ package gochan
 import "errors"
 
 var (
+	ErrInvalidServer = errors.New("invalid Server")
+
 	ErrInvalidBBS   = errors.New("invalid bbs")
 	ErrBBSExists    = errors.New("bbs exists")
 	ErrBBSNotExists = errors.New("bbs not exists")

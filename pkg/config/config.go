@@ -14,6 +14,7 @@ type Config struct {
 }
 
 var (
+	errNilConf      = errors.New("conf is nil")
 	errNoKey        = errors.New("no such key")
 	errNotPointer   = errors.New("it's not pointer")
 	errTypeMismatch = errors.New("type mismatch")
@@ -21,6 +22,9 @@ var (
 )
 
 func (c *Config) LoadJson(from io.Reader) error {
+	if c == nil {
+		return errNilConf
+	}
 	js, err := io.ReadAll(from)
 	if err != nil {
 		return err
@@ -43,10 +47,16 @@ func (c *Config) LoadJson(from io.Reader) error {
 }
 
 func (c *Config) SetParent(p *Config) {
+	if c == nil {
+		return
+	}
 	c.parent = p
 }
 
 func (c *Config) Get(k string, to interface{}) error {
+	if c == nil {
+		return errNilConf
+	}
 	if c.vals == nil {
 		c.vals = map[string]interface{}{}
 	}
@@ -76,6 +86,9 @@ func (c *Config) Get(k string, to interface{}) error {
 }
 
 func (c *Config) GetRaw(k string) (interface{}, error) {
+	if c == nil {
+		return nil, errNilConf
+	}
 	v, ok := c.vals[k]
 	if !ok {
 		if c.parent != nil {
@@ -87,6 +100,9 @@ func (c *Config) GetRaw(k string) (interface{}, error) {
 }
 
 func (c *Config) GetInt(k string) (int, error) {
+	if c == nil {
+		return 0, errNilConf
+	}
 	v, err := c.GetRaw(k)
 	if err != nil {
 		return 0, err
@@ -99,6 +115,9 @@ func (c *Config) GetInt(k string) (int, error) {
 }
 
 func (c *Config) GetFloat64(k string) (float64, error) {
+	if c == nil {
+		return 0, errNilConf
+	}
 	v, err := c.GetRaw(k)
 	if err != nil {
 		return 0, err
@@ -111,6 +130,9 @@ func (c *Config) GetFloat64(k string) (float64, error) {
 }
 
 func (c *Config) GetString(k string) (string, error) {
+	if c == nil {
+		return "", errNilConf
+	}
 	v, err := c.GetRaw(k)
 	if err != nil {
 		return "", err
@@ -123,6 +145,9 @@ func (c *Config) GetString(k string) (string, error) {
 }
 
 func (c *Config) GetBool(k string) (bool, error) {
+	if c == nil {
+		return false, errNilConf
+	}
 	v, err := c.GetRaw(k)
 	if err != nil {
 		return false, err
@@ -135,6 +160,9 @@ func (c *Config) GetBool(k string) (bool, error) {
 }
 
 func (c *Config) Set(k string, from interface{}) error {
+	if c == nil {
+		return errNilConf
+	}
 	if c.vals == nil {
 		c.vals = map[string]interface{}{}
 	}
@@ -143,6 +171,9 @@ func (c *Config) Set(k string, from interface{}) error {
 }
 
 func (c *Config) ExportJson(to io.Writer) error {
+	if c == nil {
+		return errNilConf
+	}
 	b, err := json.Marshal(c.vals)
 	if err != nil {
 		return err
