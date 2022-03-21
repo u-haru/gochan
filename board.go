@@ -86,10 +86,11 @@ func (bd *board) readSettings() {
 
 func (bd *board) reloadSettings() {
 	bd.Lock()
-	bd.setting = ""
 	title, _ := bd.Conf.GetString("TITLE")
 	title = toSJIS(title)
-	bd.setting += fmt.Sprintf("BBS_TITLE=%s\nBBS_TITLE_ORIG=%s", title, title)
+	noname, _ := bd.Conf.GetString("NONAME")
+	noname = toSJIS(noname)
+	bd.setting = fmt.Sprintf("BBS_TITLE=%s\nBBS_TITLE_ORIG=%s\nBBS_NONAME_NAME=%s\n", title, title, noname)
 	bd.Unlock()
 }
 
