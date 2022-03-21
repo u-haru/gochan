@@ -122,21 +122,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 var subject = toSJIS("%s.dat<>%s (%d)\n")
 
 func (bd *board) refresh_subjects() {
-	type str struct {
-		key     string
-		title   string
-		num     uint
-		lastmod time.Time
-	}
-	subs := []str{}
+	subs := make([]*Thread, 0, len(bd.threads))
 
-	for i, v := range bd.threads {
-		subs = append(subs, str{
-			key:     i,
-			title:   v.title,
-			num:     v.num,
-			lastmod: v.lastmod,
-		})
+	for _, v := range bd.threads {
+		subs = append(subs, v)
 	}
 
 	sort.Slice(subs, func(i, j int) bool {
