@@ -56,6 +56,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		if res.Subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", res.Date.Unix())
 			th := NewThread(key)
+			th.lastmod = res.Date
 			if err := board.AddThread(th); err != nil {
 				dispError(w, "keyが不正です!")
 				return
