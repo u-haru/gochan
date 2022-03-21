@@ -39,18 +39,18 @@ func main() {
 	}
 	Server.HTTPServeMux.Handle(ab.Path, ab)
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	log.Println("Listening on: " + Host)
 	go func() {
-		log.Println(Server.ListenAndServe(Host, Dir))
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		s := <-c
+		fmt.Printf("Signal received: %s \n", s.String())
+		Server.Save()
+		close(c)
+		os.Exit(130)
 	}()
 
-	s := <-c
-	fmt.Printf("Signal received: %s \n", s.String())
-	Server.Save()
-	close(c)
-	os.Exit(130)
+	log.Println("Listening on: " + Host)
+	log.Println(Server.ListenAndServe(Host, Dir))
 }
 
 var list struct {
