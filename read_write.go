@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -53,11 +52,13 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		dispError(w, "bbsが不正です!")
 		return
 	} else {
+		var th *Thread
 		if res.Subject != "" { //subjectがあれば新規スレ
 			key = fmt.Sprintf("%d", res.Date.Unix())
-			th := NewThread(key)
+			th = NewThread(key)
 			th.lastmod = res.Date
-			if err := board.AddThread(th); err != nil {
+			th.Conf.SetParent(&board.Conf) //スレ立てに必要なため仮置
+			if _, ok := board.threads[key]; ok {
 				dispError(w, "keyが不正です!")
 				return
 			}
@@ -67,8 +68,9 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 				return
 			}
 			th.title = res.Subject
+		} else {
+			th, ok = board.threads[key]
 		}
-		th, ok := board.threads[key]
 		if !ok {
 			dispError(w, "keyが不正です!")
 			return
@@ -109,6 +111,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		th.AddRes(res)
 
 		if res.Subject != "" { //新規スレの場合にルール生成
+			if err := board.AddThread(th); err != nil {
+				dispError(w, "keyが不正です!")
+				return
+			}
 			if sv.Function.RuleGenerator != nil {
 				sv.Function.RuleGenerator(th)
 			}
@@ -221,13 +227,12 @@ func dispError(w http.ResponseWriter, stat string) {
 </html>`)
 }
 
-func readalltxt(path string) string {
+func readalltxt(path string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		log.Println(err)
-		return ""
+		return "", err
 	}
 	tmp, _ := io.ReadAll(file)
 	file.Close()
-	return string(tmp)
+	return string(tmp), nil
 }

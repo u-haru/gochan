@@ -96,6 +96,7 @@ func (th *Thread) Save(dir string) {
 	dat, err := os.Create(path)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 	dat.WriteString(th.dat)
 	dat.Close()

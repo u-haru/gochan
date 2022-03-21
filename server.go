@@ -65,7 +65,12 @@ func (sv *Server) init(dir string) {
 		for _, key := range keys { //スレ情報読み込み
 			th := NewThread(key)
 			bd.AddThread(th)
-			th.dat = readalltxt(th.Path())
+			var err error
+			th.dat, err = readalltxt(th.Path())
+			if err != nil {
+				delete(bd.threads, key)
+				continue
+			}
 			th.num = uint(strings.Count(th.dat, "\n"))
 			tmp := strings.SplitN(th.dat, "\n", 2)[0]
 			th.title = strings.Split(toUTF(tmp), "<>")[4]

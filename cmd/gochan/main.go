@@ -61,6 +61,7 @@ var list struct {
 
 var triplist map[string]string = map[string]string{
 	"c045526b5ddad91b2f0d13168590f19a7113e347d7681a673ea308aa7dee2f09": "管理人",
+	"3c46148eb25bea277ae350d6588f36e292da6a3e9ca73e4d915bf432f31f3369": "システム",
 }
 
 func messageChecker(res *gochan.Res) (bool, string) {
@@ -84,12 +85,13 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	// 	return false, "ハゲじゃねえわ"
 	// }
 	// res.Message = strings.ReplaceAll(res.Message, "test", "テスト")
+	th := res.Thread()
 
 	if c, err := res.Req.Cookie("AcceptRule"); err != nil || c.Value != "true" {
 		http.SetCookie(res.Writer, &http.Cookie{
 			Name:    "AcceptRule",
 			Value:   "true",
-			Path:    res.Thread().Board().BBS(),
+			Path:    th.Board().BBS(),
 			Expires: time.Now().Add(time.Hour * 24),
 		})
 		return false, "書き込んでもよろしいですか?\n書き込みに対し本サイトはいかなる責任も負いません。今後行われた書き込みに対しては、この規約に同意したものとみなします。\n書き込みを行う場合はページを再読み込みしてください。"
@@ -110,9 +112,11 @@ func messageChecker(res *gochan.Res) (bool, string) {
 
 	res.From = strings.ReplaceAll(res.From, "★", "☆")
 	pos := strings.Index(res.From, "#")
+	wf := false //管理者の書き込み
 	if pos != -1 {
 		if n, ok := triplist[admin.Hash(res.From[pos:])]; ok {
 			res.From = n
+			wf = true
 		} else {
 			trip := admin.Hash(res.From[pos:])
 			trip = strings.ToUpper(trip[len(trip)-6:])
@@ -121,20 +125,24 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	} else {
 		for _, n := range triplist {
 			if strings.Contains(res.From, n) {
-				res.From, _ = res.Thread().Conf.GetString("NONAME")
+				res.From, _ = th.Conf.GetString("NONAME")
 				break
 			}
 		}
+	}
+	wable, err := th.Conf.GetBool("wable")
+	if err == nil && !wable && !wf { //管理者以外書き込み禁止のスレ
+		return false, "このスレには書き込めません"
 	}
 
 	f, err := os.OpenFile("access.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err == nil {
 		_, err := f.WriteString(fmt.Sprintf("[%s] %s/%s(Title: %s)\n\t%d.%s %s(Mail: %s) :%s\n\tHost:%s\tUA:%s\n",
 			res.Date.Format("2006-01-02 15:04:05.00"),
-			res.Thread().Board().BBS(),
-			res.Thread().Key(),
-			res.Thread().Title(),
-			res.Thread().Num()+1,
+			th.Board().BBS(),
+			th.Key(),
+			th.Title(),
+			th.Num()+1,
 			res.From, res.ID,
 			res.Mail, res.Message,
 			res.Req.RemoteAddr, res.Req.UserAgent()))
@@ -148,8 +156,8 @@ func messageChecker(res *gochan.Res) (bool, string) {
 }
 
 func archiveChecker(th *gochan.Thread, force bool) bool {
-	aable, _ := th.Conf.GetBool("aable")
-	if !aable {
+	aable, err := th.Conf.GetBool("aable")
+	if err == nil && !aable {
 		return false //アーカイブ出来ないスレは絶対にアーカイブしない(通知とか)
 	}
 	if !th.Writable() {
@@ -170,5 +178,9 @@ func RuleGenerator(th *gochan.Thread) {
 	group := noname.FindSubmatch([]byte(res1.Message))
 	if len(group) == 2 {
 		th.Conf.Set("NONAME", string(group[1]))
+	}
+	if res1.From == "システム" {
+		th.Conf.Set("aable", false) //システムからの書き込みはアーカイブ不可
+		th.Conf.Set("wable", false) //システムからの書き込みは一般ユーザー書き込み不可
 	}
 }
