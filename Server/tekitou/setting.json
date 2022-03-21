@@ -4,5 +4,6 @@
     "DELETED_NAME":"あぼーん",
     "MAX_RES":1000,
     "MAX_RES_LEN":2048,
-    "SUBJECT_MAXLEN":30
+    "SUBJECT_MAXLEN":30,
+    "MAX_THREAD":30
 }

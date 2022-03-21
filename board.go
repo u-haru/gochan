@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -107,6 +108,29 @@ func (bd *board) reloadSettings() {
 	noname = toSJIS(noname)
 	bd.setting = fmt.Sprintf("BBS_TITLE=%s\nBBS_TITLE_ORIG=%s\nBBS_NONAME_NAME=%s\n", title, title, noname)
 	bd.Unlock()
+}
+
+func (bd *board) Squash() error {
+	if bd == nil {
+		return ErrBBSNotExists
+	}
+	m, err := bd.Conf.GetInt("MAX_THREAD")
+	if err != nil {
+		return ErrInvalidBBS
+	}
+	if len(bd.threads) > m {
+		s := make([]*Thread, 0, len(bd.threads))
+		for _, th := range bd.threads {
+			s = append(s, th)
+		}
+		sort.Slice(s, func(i, j int) bool { return s[i].lastmod.After(s[j].lastmod) })
+
+		for _, th := range s[m:] {
+			th.Archive()
+		}
+		bd.refresh_subjects()
+	}
+	return nil
 }
 
 func (bd *board) Threads() map[string]*Thread {
