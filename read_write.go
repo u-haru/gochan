@@ -212,7 +212,10 @@ func readalltxt(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	tmp, _ := io.ReadAll(file)
+	tmp, err := io.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
 	file.Close()
 	return string(tmp), nil
 }
