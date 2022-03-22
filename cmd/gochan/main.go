@@ -168,7 +168,7 @@ func archiveChecker(th *gochan.Thread, force bool) bool {
 	return force //スレ落ちして無くても強制なら落とす
 }
 
-var noname = regexp.MustCompile("NONAME=(.*)<br>")
+var noname = regexp.MustCompile("NONAME=(.*?)($|<| )")
 
 func RuleGenerator(th *gochan.Thread) {
 	res1, err := th.GetRes(1) //1つめの書き込みゲット
@@ -176,7 +176,7 @@ func RuleGenerator(th *gochan.Thread) {
 		return
 	}
 	group := noname.FindSubmatch([]byte(res1.Message))
-	if len(group) == 2 {
+	if len(group) > 1 {
 		th.Conf.Set("NONAME", string(group[1]))
 	}
 	if res1.From == "システム" {
