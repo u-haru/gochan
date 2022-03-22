@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 )
@@ -124,30 +123,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
 	fmt.Fprintf(w, written, sv.Baseurl+bbs, key)
-	board.refresh_subjects()
+	board.RefreshSubjects()
 }
 
 var subject = toSJIS("%s.dat<>%s (%d)\n")
-
-func (bd *board) refresh_subjects() {
-	subs := make([]*Thread, 0, len(bd.threads))
-
-	for _, v := range bd.threads {
-		subs = append(subs, v)
-	}
-
-	sort.Slice(subs, func(i, j int) bool {
-		return subs[i].lastmod.After(subs[j].lastmod)
-	}) // ソート
-
-	bd.Lock()
-	bd.subject = ""
-	for _, k := range subs {
-		bd.subject += fmt.Sprintf(subject, k.key, toSJIS(k.title), k.num)
-	}
-	bd.lastmod = time.Now()
-	bd.Unlock()
-}
 
 // 8バイトのランダムな値+1バイトの"0"を返す
 // 日付でIDが変化する
@@ -193,9 +172,9 @@ func (sv *Server) dat(w http.ResponseWriter, r *http.Request, bbs, key string) {
 }
 
 func (sv *Server) sub(w http.ResponseWriter, r *http.Request, bbs string) { //subject.txt
-	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
-	w.Header().Set("Cache-Control", "no-cache")
 	if bd, ok := sv.boards[bbs]; ok {
+		w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
+		w.Header().Set("Cache-Control", "no-cache")
 		bd.RLock()
 		http.ServeContent(w, r, bd.Path()+"subject.txt", bd.lastmod, strings.NewReader(bd.subject)) //回数多いためServeContentでキャッシュ保存
 		bd.RUnlock()
@@ -205,9 +184,9 @@ func (sv *Server) sub(w http.ResponseWriter, r *http.Request, bbs string) { //su
 }
 
 func (sv *Server) setting(w http.ResponseWriter, r *http.Request, bbs string) { //setting.txt
-	w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 	// w.Header().Set("Cache-Control", "no-cache")//別にキャッシュされても困らない
 	if bd, ok := sv.boards[bbs]; ok {
+		w.Header().Set("Content-Type", "text/plain; charset=Shift_JIS")
 		bd.RLock()
 		http.ServeContent(w, r, bd.Path()+"setting.txt", bd.lastmod, strings.NewReader(bd.setting)) //回数多いためServeContentでキャッシュ保存
 		bd.RUnlock()

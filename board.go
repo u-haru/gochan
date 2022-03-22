@@ -62,7 +62,7 @@ func (bd *board) DeleteThread(key string) error {
 		delete(bd.threads, key)
 		os.Remove(th.Path())
 	}
-	bd.refresh_subjects()
+	bd.RefreshSubjects()
 	return nil
 }
 
@@ -137,10 +137,30 @@ func (bd *board) Squash() error {
 			for _, th := range s[m:] {
 				th.Archive()
 			}
-			bd.refresh_subjects()
+			bd.RefreshSubjects()
 		}
 	}
 	return nil
+}
+
+func (bd *board) RefreshSubjects() {
+	subs := make([]*Thread, 0, len(bd.threads))
+
+	for _, v := range bd.threads {
+		subs = append(subs, v)
+	}
+
+	sort.Slice(subs, func(i, j int) bool {
+		return subs[i].lastmod.After(subs[j].lastmod)
+	}) // ソート
+
+	bd.Lock()
+	bd.subject = ""
+	for _, k := range subs {
+		bd.subject += fmt.Sprintf(subject, k.key, toSJIS(k.title), k.num)
+	}
+	bd.lastmod = time.Now()
+	bd.Unlock()
 }
 
 func (bd *board) Threads() map[string]*Thread {

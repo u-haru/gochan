@@ -89,7 +89,7 @@ func (sv *Server) init(dir string) {
 				sv.Function.RuleGenerator(th)
 			}
 		}
-		bd.refresh_subjects()
+		bd.RefreshSubjects()
 	}
 
 	sv.SetLocation("Asia/Tokyo")
