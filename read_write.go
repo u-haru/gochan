@@ -70,10 +70,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 			th.title = res.Subject
 		} else {
 			th, ok = board.threads[key]
-		}
-		if !ok {
-			dispError(w, "keyが不正です!")
-			return
+			if !ok {
+				dispError(w, "keyが不正です!")
+				return
+			}
 		}
 		i, err := th.Conf.GetInt("MAX_RES_LEN")
 		if err == nil && len(res.Message) > i {
