@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -34,6 +35,30 @@ var written = toSJIS(`<html>
 </body>
 </html>`)
 
+//https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
+func getIPAdress(r *http.Request) string {
+	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
+		addresses := strings.Split(r.Header.Get(h), ",")
+		// march from right to left until we get a public address
+		// that will be the address right before our proxy.
+		for i := len(addresses) - 1; i >= 0; i-- {
+			ip := strings.TrimSpace(addresses[i])
+			// header can contain spaces too, strip those out.
+			realIP := net.ParseIP(ip)
+			if !realIP.IsGlobalUnicast() {
+				// bad address, go to next
+				continue
+			}
+			return ip
+		}
+	}
+	i := strings.LastIndex(r.RemoteAddr, ":")
+	if i > 0 {
+		return r.RemoteAddr[:i]
+	}
+	return r.RemoteAddr
+}
+
 func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
 	bbs := toUTF(r.PostFormValue("bbs"))
 	key := toUTF(r.PostFormValue("key"))
@@ -46,6 +71,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	res.Date = time.Now()
 	res.Req = *r
 	res.Writer = w
+	res.RemoteAddr = getIPAdress(r)
 
 	board, ok := sv.boards[bbs]
 	if !ok {
@@ -100,7 +126,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		}
 	}
 
-	res.ID = sv.GenerateID(strings.Split(r.RemoteAddr, ":")[0]) // ID生成
+	res.ID = sv.GenerateID(res.RemoteAddr) // ID生成
 
 	if sv.Function.WriteChecker != nil {
 		if ok, reason := sv.Function.WriteChecker(res); !ok {

@@ -35,6 +35,7 @@ type Server struct {
 
 type Res struct {
 	From, Mail, Message, Subject string
+	RemoteAddr                   string
 	ID                           []byte
 	Date                         time.Time
 

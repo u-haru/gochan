@@ -97,7 +97,7 @@ func messageChecker(res *gochan.Res) (bool, string) {
 		return false, "書き込んでもよろしいですか?\n書き込みに対し本サイトはいかなる責任も負いません。今後行われた書き込みに対しては、この規約に同意したものとみなします。\n書き込みを行う場合はページを再読み込みしてください。"
 	}
 
-	v, ok := list.messager[strings.Split(res.Req.RemoteAddr, ":")[0]]
+	v, ok := list.messager[res.RemoteAddr]
 	if ok {
 		if v.Add(time.Second * 5).After(res.Date) { //前回の書き込みから5秒以内
 			return false, "マルチポストですか?"
@@ -107,7 +107,7 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	if list.messager == nil {
 		list.messager = make(map[string]time.Time)
 	}
-	list.messager[strings.Split(res.Req.RemoteAddr, ":")[0]] = res.Date
+	list.messager[res.RemoteAddr] = res.Date
 	list.Unlock()
 
 	res.From = strings.ReplaceAll(res.From, "★", "☆")
@@ -145,7 +145,7 @@ func messageChecker(res *gochan.Res) (bool, string) {
 			th.Num()+1,
 			res.From, res.ID,
 			res.Mail, res.Message,
-			res.Req.RemoteAddr, res.Req.UserAgent()))
+			res.RemoteAddr, res.Req.UserAgent()))
 		if err != nil {
 			log.Println(err)
 		}
