@@ -48,82 +48,83 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	res.Req = *r
 	res.Writer = w
 
-	if board, ok := sv.boards[bbs]; !ok {
+	board, ok := sv.boards[bbs]
+	if !ok {
 		dispError(w, "bbsが不正です!")
 		return
-	} else {
-		var th *Thread
-		if res.Subject != "" { //subjectがあれば新規スレ
-			key = fmt.Sprintf("%d", res.Date.Unix())
-			th = NewThread(key)
-			th.lastmod = res.Date
-			th.Conf.SetParent(&board.Conf) //スレ立てに必要なため仮置
-			if _, ok := board.threads[key]; ok {
-				dispError(w, "keyが不正です!")
-				return
-			}
-			i, err := board.Conf.GetInt("SUBJECT_MAXLEN")
-			if err == nil && len(res.Subject) > i {
-				dispError(w, "タイトルが長すぎます!")
-				return
-			}
-			th.title = res.Subject
-		} else {
-			th, ok = board.threads[key]
-			if !ok {
-				dispError(w, "keyが不正です!")
-				return
-			}
-		}
-		i, err := th.Conf.GetInt("MAX_RES_LEN")
-		if err == nil && len(res.Message) > i {
-			dispError(w, "本文が長すぎます!")
-			return
-		}
-		if res.Message == "" {
-			dispError(w, "本文が空です!")
-			return
-		}
-		if !th.Writable() {
-			dispError(w, "このスレッドは書き込みできる数を超えました。\n新しいスレッドを立ててください。")
-			return
-		}
-
-		res.thread = th
-		if res.From == "" {
-			s, err := th.Conf.GetString("NONAME")
-			if err == nil {
-				res.From = s
-			} else {
-				res.From = "Noname"
-			}
-		}
-
-		res.ID = sv.GenerateID(strings.Split(r.RemoteAddr, ":")[0]) // ID生成
-
-		if sv.Function.WriteChecker != nil {
-			if ok, reason := sv.Function.WriteChecker(res); !ok {
-				dispError(w, reason)
-				return
-			}
-		}
-
-		th.AddRes(res)
-
-		if res.Subject != "" { //新規スレの場合にルール生成
-			if err := board.AddThread(th); err != nil {
-				dispError(w, "keyが不正です!")
-				return
-			}
-			if sv.Function.RuleGenerator != nil {
-				sv.Function.RuleGenerator(th)
-			}
-		}
-
-		w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-		fmt.Fprintf(w, written, sv.Baseurl+bbs, key)
-		board.refresh_subjects()
 	}
+	var th *Thread
+	if res.Subject != "" { //subjectがあれば新規スレ
+		key = fmt.Sprintf("%d", res.Date.Unix())
+		th = NewThread(key)
+		th.lastmod = res.Date
+		th.Conf.SetParent(&board.Conf) //スレ立てに必要なため仮置
+		if _, ok := board.threads[key]; ok {
+			dispError(w, "keyが不正です!")
+			return
+		}
+		i, err := board.Conf.GetInt("SUBJECT_MAXLEN")
+		if err == nil && len(res.Subject) > i {
+			dispError(w, "タイトルが長すぎます!")
+			return
+		}
+		th.title = res.Subject
+	} else {
+		th, ok = board.threads[key]
+		if !ok {
+			dispError(w, "keyが不正です!")
+			return
+		}
+	}
+
+	i, err := th.Conf.GetInt("MAX_RES_LEN")
+	if err == nil && len(res.Message) > i {
+		dispError(w, "本文が長すぎます!")
+		return
+	}
+	if res.Message == "" {
+		dispError(w, "本文が空です!")
+		return
+	}
+	if !th.Writable() {
+		dispError(w, "このスレッドは書き込みできる数を超えました。\n新しいスレッドを立ててください。")
+		return
+	}
+
+	res.thread = th
+	if res.From == "" {
+		s, err := th.Conf.GetString("NONAME")
+		if err == nil {
+			res.From = s
+		} else {
+			res.From = "Noname"
+		}
+	}
+
+	res.ID = sv.GenerateID(strings.Split(r.RemoteAddr, ":")[0]) // ID生成
+
+	if sv.Function.WriteChecker != nil {
+		if ok, reason := sv.Function.WriteChecker(res); !ok {
+			dispError(w, reason)
+			return
+		}
+	}
+
+	th.AddRes(res)
+
+	if res.Subject != "" { //新規スレの場合にルール生成
+		if err := board.AddThread(th); err != nil {
+			dispError(w, "keyが不正です!")
+			return
+		}
+		if sv.Function.RuleGenerator != nil {
+			sv.Function.RuleGenerator(th)
+		}
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
+	fmt.Fprintf(w, written, sv.Baseurl+bbs, key)
+	board.refresh_subjects()
 }
 
 var subject = toSJIS("%s.dat<>%s (%d)\n")
