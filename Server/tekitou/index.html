@@ -13,8 +13,22 @@
     </noscript>
     <div class="list">
         <div class="box head" id="thread_catalog">
+            <h2 class="common" id="title"><script>document.getElementById("title").innerHTML = document.title</script></h2>
+            <div class="menu" id="head">
+                <script>
+                let xhr = new XMLHttpRequest();
+                xhr.open('GET', "./head.txt");
+                xhr.onload = function () {
+                    document.getElementById("head").innerHTML = xhr.responseText
+                }
+                xhr.overrideMimeType('text/html; charset=Shift_JIS')
+                xhr.send();
+                </script>
+            </div>
+        </div>
+        <div class="box head" id="thread_catalog">
             <div class="common">この板の主なスレッド</div>
-            <div class="thread_menu" id="thread_menu">
+            <div class="menu" id="thread_menu">
             </div>
         </div>
     </div>
@@ -102,7 +116,7 @@
         if (searchParams.has("key")) {
             let key = searchParams.get("key")
             getdat(searchParams.get("key") + ".dat")
-            document.getElementById("thread_catalog").classList.add("disabled")
+            Array.from(document.getElementsByClassName("head")).forEach(e=>{e.classList.add("disabled")})
             document.getElementById("writing_area").insertAdjacentHTML('beforeend', postarea(key))
         } else {
             document.getElementById("writing_area").insertAdjacentHTML('beforeend', postarea())
@@ -118,7 +132,7 @@
                         let dat = tmp[0]
                         getdat(dat,true)
                         let key = dat.split('.')[0]
-                        menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?key=${key}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
+                        menu.insertAdjacentHTML('beforeend', `<p class="menu_content"><a href="?key=${key}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
                     }
                 });
             };
@@ -129,10 +143,15 @@
 <style>
     * {
         max-width: 100%;
+        margin: 0;
+    }
+    html{
+        font-size: 62.5%;
     }
     body {
         background-image: url("./ba.gif");
         margin: 0;
+        font-size: 1.6rem;
     }
 
     .list {
@@ -165,18 +184,19 @@
         overflow-wrap: break-word;
     }
 
-    .thread_menu {
+    .menu {
         margin: 0.5em 0;
         border-top: 0.5em solid #BEB;
         padding-left: 0.5em;
         border-bottom: 0.5em solid #BEB;
         border-radius: 0.5em / 0.5em;
-        height: 15em;
+        max-height: 15em;
+        word-wrap: break-word;
         overflow-y: scroll;
         background: #BEB;
     }
 
-    .thread_menu_content {
+    .menu_content {
         margin: 0;
         padding: 0;
         font-size: 0.75em;
@@ -215,7 +235,6 @@
         border-radius: 0.50em / 0.50em;
         background: #39F;
         color: #FFF;
-        font-size: 1.00em;
         display: inline-block;
     }
 
