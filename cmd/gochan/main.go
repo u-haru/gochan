@@ -161,14 +161,6 @@ func archiveChecker(th *gochan.Thread, force bool) bool {
 		return false //アーカイブ出来ないスレは絶対にアーカイブしない(通知とか)
 	}
 	if !th.Writable() {
-		i, _ := th.Conf.GetInt("MAX_RES")
-		r := &gochan.Res{
-			From:       "システム",
-			Message:    fmt.Sprintf("このスレッドは%dを超えたのでこれ以上書き込めません。<br>次のスレッドを立ててください。", i),
-			RemoteAddr: "",
-			Date:       time.Now(),
-		}
-		th.AddRes(r)
 		if th.Lastmod().Add(time.Minute * 2).Before(time.Now()) { //スレ落ちから2分経過
 			return true
 		}
