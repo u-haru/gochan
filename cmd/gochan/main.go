@@ -60,9 +60,13 @@ var list struct {
 	sync.Once
 }
 
-var triplist map[string]string = map[string]string{
-	"c045526b5ddad91b2f0d13168590f19a7113e347d7681a673ea308aa7dee2f09": "管理人",
-	"3c46148eb25bea277ae350d6588f36e292da6a3e9ca73e4d915bf432f31f3369": "システム",
+type user struct {
+	Name, ID string
+}
+
+var userlist map[string]user = map[string]user{
+	"c045526b5ddad91b2f0d13168590f19a7113e347d7681a673ea308aa7dee2f09": {"管理人", "ADMIN"},
+	"3c46148eb25bea277ae350d6588f36e292da6a3e9ca73e4d915bf432f31f3369": {"システム", "SYSTEMUSER"},
 }
 
 func messageChecker(res *gochan.Res) (bool, string) {
@@ -115,8 +119,9 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	pos := strings.Index(res.From, "#")
 	wf := false //管理者の書き込み
 	if pos != -1 {
-		if n, ok := triplist[admin.Hash(res.From[pos:])]; ok {
-			res.From = n
+		if u, ok := userlist[admin.Hash(res.From[pos:])]; ok {
+			res.From = u.Name
+			res.ID = []byte(u.ID)
 			wf = true
 		} else {
 			trip := admin.Hash(res.From[pos:])
@@ -124,8 +129,8 @@ func messageChecker(res *gochan.Res) (bool, string) {
 			res.From = fmt.Sprintf("%s★%s", res.From[:pos], trip)
 		}
 	} else {
-		for _, n := range triplist {
-			if strings.Contains(res.From, n) {
+		for _, u := range userlist {
+			if strings.Contains(res.From, u.Name) {
 				res.From, _ = th.Conf.GetString("NONAME")
 				break
 			}
