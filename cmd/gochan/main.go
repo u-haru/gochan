@@ -30,7 +30,7 @@ func main() {
 	Server.Function.WriteChecker = messageChecker
 	Server.Function.ArchiveChecker = archiveChecker
 	Server.Function.RuleGenerator = RuleGenerator
-	Server.BBSMENU.Description = "BBSMENU@u-haru.com"
+	Server.Description = "gochan@u-haru.com"
 	// Server.Baseurl = "/a/"
 
 	ab := &admin.Board{

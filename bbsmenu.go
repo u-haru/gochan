@@ -30,9 +30,8 @@ type category_content struct {
 }
 
 type BBSMENU struct {
-	HTML, JSON  string
-	lastmod     time.Time
-	Description string
+	HTML, JSON string
+	lastmod    time.Time
 }
 
 func (sv *Server) GenBBSmenu() error {
@@ -42,7 +41,7 @@ func (sv *Server) GenBBSmenu() error {
 	var bbsmenu bbsmenu_s
 	sv.BBSMENU.lastmod = time.Now()
 
-	bbsmenu.Description = sv.BBSMENU.Description
+	bbsmenu.Description = sv.Description
 	bbsmenu.LastModify = int(sv.BBSMENU.lastmod.Unix())
 	bbsmenu.LastModifyString = sv.BBSMENU.lastmod.Format("2006/01/02(Mon) 15:04:05.00")
 

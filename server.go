@@ -29,7 +29,8 @@ type Server struct {
 	Dir    string
 	boards map[string]*board
 
-	Baseurl string
+	Baseurl     string
+	Description string
 
 	location time.Location
 	http.ServeMux

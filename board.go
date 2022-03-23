@@ -108,7 +108,7 @@ func (bd *board) reloadSettings() {
 	title = toSJIS(title)
 	noname, _ := bd.Conf.GetString("NONAME")
 	noname = toSJIS(noname)
-	bd.setting = fmt.Sprintf("BBS_TITLE=%s\nBBS_TITLE_ORIG=%s\nBBS_NONAME_NAME=%s\n", title, title, noname)
+	bd.setting = fmt.Sprintf("%s\nBBS_TITLE=%s\nBBS_TITLE_ORIG=%s\nBBS_NONAME_NAME=%s\n", bd.server.Description, title, title, noname)
 	bd.Unlock()
 }
 
