@@ -94,7 +94,6 @@ func (bd *board) readSettings() {
 	}
 	defer f.Close()
 	bd.Conf.LoadJson(f)
-	bd.Conf.SetParent(&bd.server.Conf)
 
 	bd.reloadSettings()
 }

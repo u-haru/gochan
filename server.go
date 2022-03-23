@@ -71,6 +71,13 @@ func (sv *Server) init(dir string) {
 	if !strings.HasSuffix(sv.Dir, "/") {
 		sv.Dir = sv.Dir + "/"
 	}
+
+	sv.SetLocation("Asia/Tokyo")
+
+	for k, v := range Server_Conf {
+		sv.Conf.Set(k, v)
+	}
+
 	sv.searchboards()
 
 	for bbs, bd := range sv.boards { //板情報読み取り
@@ -105,13 +112,6 @@ func (sv *Server) init(dir string) {
 		}
 		bd.RefreshSubjects()
 	}
-
-	sv.SetLocation("Asia/Tokyo")
-
-	for k, v := range Server_Conf {
-		sv.Conf.Set(k, v)
-	}
-
 	sv.GenBBSmenu()
 }
 
@@ -157,6 +157,7 @@ func (sv *Server) NewBoard(bbs, title string) error {
 		return err
 	}
 	bd.Conf.Set("TITLE", title)
+	bd.Conf.SetParent(&sv.Conf)
 	bd.title = title
 
 	bd.reloadSettings()
