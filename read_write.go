@@ -36,7 +36,7 @@ var written = toSJIS(`<html>
 </html>`)
 
 //https://husobee.github.io/golang/ip-address/2015/12/17/remote-ip-go.html
-func getIPAdress(r *http.Request) string {
+func getIPAdress(r *http.Request) net.IP {
 	for _, h := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(r.Header.Get(h), ",")
 		// march from right to left until we get a public address
@@ -49,14 +49,14 @@ func getIPAdress(r *http.Request) string {
 				// bad address, go to next
 				continue
 			}
-			return ip
+			return realIP
 		}
 	}
 	i := strings.LastIndex(r.RemoteAddr, ":")
 	if i > 0 {
-		return r.RemoteAddr[:i]
+		return net.ParseIP(r.RemoteAddr[:i])
 	}
-	return r.RemoteAddr
+	return net.ParseIP(r.RemoteAddr)
 }
 
 func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
@@ -126,7 +126,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		}
 	}
 
-	res.ID = sv.GenerateID(res.RemoteAddr) // ID生成
+	res.ID = sv.GenerateID(res.RemoteAddr.String()) // ID生成
 
 	if sv.Function.WriteChecker != nil {
 		if ok, reason := sv.Function.WriteChecker(res); !ok {

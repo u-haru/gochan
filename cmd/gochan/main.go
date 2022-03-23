@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -68,6 +70,8 @@ var userlist map[string]user = map[string]user{
 	"c045526b5ddad91b2f0d13168590f19a7113e347d7681a673ea308aa7dee2f09": {"管理人", "ADMIN"},
 	"3c46148eb25bea277ae350d6588f36e292da6a3e9ca73e4d915bf432f31f3369": {"システム", "SYSTEMUSER"},
 }
+var domains = make(map[string]int)
+var domainmod = false
 
 func messageChecker(res *gochan.Res) (bool, string) {
 	list.Do(func() {
@@ -81,6 +85,17 @@ func messageChecker(res *gochan.Res) (bool, string) {
 						delete(list.messager, s)
 						list.Unlock()
 					}
+				}
+				if domainmod {
+					f, err := os.OpenFile("domains.json", os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+					if err == nil {
+						b, err := json.Marshal(domains)
+						if err == nil {
+							f.Write(b)
+						}
+						f.Close()
+					}
+					domainmod = false
 				}
 				// log.Println("Wiped")
 			}
@@ -102,7 +117,7 @@ func messageChecker(res *gochan.Res) (bool, string) {
 		return false, "書き込んでもよろしいですか?\n書き込みに対し本サイトはいかなる責任も負いません。今後行われた書き込みに対しては、この規約に同意したものとみなします。\n書き込みを行う場合はページを再読み込みしてください。"
 	}
 
-	v, ok := list.messager[res.RemoteAddr]
+	v, ok := list.messager[res.RemoteAddr.String()]
 	if ok {
 		if v.Add(time.Second * 5).After(res.Date) { //前回の書き込みから5秒以内
 			return false, "マルチポストですか?"
@@ -112,7 +127,7 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	if list.messager == nil {
 		list.messager = make(map[string]time.Time)
 	}
-	list.messager[res.RemoteAddr] = res.Date
+	list.messager[res.RemoteAddr.String()] = res.Date
 	list.Unlock()
 
 	res.From = strings.ReplaceAll(res.From, "★", "☆")
@@ -157,6 +172,20 @@ func messageChecker(res *gochan.Res) (bool, string) {
 		}
 		f.Close()
 	}
+	go func(ip net.IP) {
+		addr, err := net.LookupAddr(ip.String())
+		if err == nil {
+			domain := addr[0]
+			tmp := strings.SplitAfterN(domain, ".", 2)
+			if len(tmp) > 1 {
+				domain = tmp[1]
+			}
+			domains[domain]++
+		} else {
+			domains[ip.String()]++
+		}
+		domainmod = true
+	}(res.RemoteAddr)
 
 	return true, ""
 }
