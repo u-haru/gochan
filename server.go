@@ -14,6 +14,17 @@ import (
 	"github.com/u-haru/gochan/pkg/config"
 )
 
+var Server_Conf map[string]interface{} = map[string]interface{}{
+	"DELETED_NAME":   "あぼーん",
+	"NONAME":         "名無しさん",
+	"MAX_RES":        1000,
+	"MAX_RES_LEN":    2048,
+	"MAX_THREAD":     30,
+	"SUBJECT_MAXLEN": 30,
+
+	"TITLE": "Sample", //Board_Conf
+}
+
 type Server struct {
 	Dir    string
 	boards map[string]*board
@@ -95,12 +106,9 @@ func (sv *Server) init(dir string) {
 
 	sv.SetLocation("Asia/Tokyo")
 
-	sv.Conf.Set("NONAME", "名無しさん")
-	sv.Conf.Set("DELETED_NAME", "あぼーん")
-	sv.Conf.Set("MAX_RES", 1000)
-	sv.Conf.Set("MAX_RES_LEN", 2048)
-	sv.Conf.Set("SUBJECT_MAXLEN", 30)
-	sv.Conf.Set("MAX_THREAD", 30)
+	for k, v := range Server_Conf {
+		sv.Conf.Set(k, v)
+	}
 
 	sv.GenBBSmenu()
 }
@@ -135,17 +143,24 @@ func (sv *Server) AddBoard(bd *board) error {
 	return nil
 }
 
-func (sv *Server) NewBoard(bbs, title string) {
-	if !exists(sv.Dir + "/" + bbs) {
-		os.MkdirAll(sv.Dir+bbs+"/dat/", 0755)
+func (sv *Server) NewBoard(bbs, title string) error {
+	if exists(sv.Dir + "/" + bbs) {
+		return ErrBBSExists
+	}
+	if err := os.MkdirAll(sv.Dir+bbs+"/dat/", 0755); err != nil {
+		return err
 	}
 	bd := NewBoard(bbs)
-	sv.AddBoard(bd)
-	bd.Conf.Set("BBS_TITLE", title)
-	bd.Conf.Set("BBS_TITLE_ORIG", title)
+	if err := sv.AddBoard(bd); err != nil {
+		return err
+	}
+	bd.Conf.Set("TITLE", title)
+	bd.title = title
 
-	sv.boards[bbs].reloadSettings()
-	sv.boards[bbs].saveSettings()
+	bd.reloadSettings()
+	bd.saveSettings()
+	sv.GenBBSmenu()
+	return nil
 }
 
 func (sv *Server) DeleteBoard(bbs string) error {

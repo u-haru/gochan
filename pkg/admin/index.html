@@ -11,14 +11,25 @@
         専用ブラウザの使用を推奨しています<br>
     </noscript>
     <div style="display: flex;flex-direction:row; min-height: 100%">
-        <div style="width: 10em;border-right: #000 2px solid;padding: 1em;box-sizing: border-box;">
+        <div
+            style="border-right: #000 2px solid;padding: 1em;box-sizing: border-box;flex-basis: min-content;">
             <a href="?">
                 <h2 style="margin: 0;">Home</h2>
             </a>
             <div id="board_list">
             </div>
+            <h2>新たな板を作る</h2>
+            <div>
+                <input type="text" id="newboard_bbs" style="width: 100%;" placeholder="tekitou"><br>
+                <input type="text" id="newboard_title" style="width: 100%;" placeholder="適当な板">
+                <input type="button" id="newboard_button" value="送信">
+            </div>
+            <h2>ショートカット</h2>
+            <div>
+                <a href="#config_list">コンフィグ</a>
+            </div>
         </div>
-        <div style="flex-grow: 1;">
+        <div style="flex: 1;position: relative;">
             <div class="list">
                 <div class="box head disabled" id="thread_catalog">
                     <div class="common">この板の主なスレッド</div>
@@ -28,277 +39,445 @@
             </div>
             <div class="list" id="thread_list">
             </div>
+            <div class="list">
+                <div class="box foot">
+                    <div class="common">コンフィグ</div>
+                    <table id="config_list">
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
-</body>
-<script>
-    const searchParams = new URLSearchParams(window.location.search);
-    const admin = location.pathname.split("/")[1]
-    let bbstotitle = {}
-    function getdat(baseurl,bbs, dat, toppage) {
-        let xhr = new XMLHttpRequest();
+    <div style="border-top: #000 2px solid;min-height: 5rem;"><div style="margin:2rem auto;width: fit-content;">Copyright:u-haru@u-haru.com All Rights Reserved</div></div>
+    <script>
+        const searchParams = new URLSearchParams(window.location.search);
+        const adminbaseurl = location.pathname
+        const conf_list = document.getElementById("config_list")
+        let bbstotitle = {}
+        function newboard(baseurl, bbs, boardname) {
+            if (window.confirm(`新しい板を作りますか?\r\n  URL: ${baseurl + bbs + "/"}  タイトル: ${boardname}`)) {
+                let xhr = new XMLHttpRequest();
+                xhr.open("POST", adminbaseurl + "newBoard", false);
+                xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                xhr.send("bbs=" + bbs + "&boardname=" + boardname);
+                window.location.reload();
+            }
+        }
+        function getdat(baseurl, bbs, dat, is_toppage) {
+            let xhr = new XMLHttpRequest();
 
-        let list = document.getElementById("thread_list")
+            let list = document.getElementById("thread_list")
 
-        let key = dat.toString().split(".")[0]
-        xhr.open('GET', baseurl + bbs + "/dat/" + dat, false);
-        xhr.onload = function () {
-            let datas = xhr.responseText.split("\n")
-            let thread = { "title": "", "res": [] }
-            datas.forEach(data => {
-                if (data != "") {
-                    let tmp = data.split("<>")
-                    tmp[3] = tmp[3].replace(/&gt;&gt;([0-9]+)(?![-\d])/i, `<a href="#${key}_$1">&gt;&gt;$1</a>`)
-                    tmp[3] = tmp[3].replace(/&gt;&gt;([0-9]+)\-([0-9]+)/i, `<a href="#${key}_$1">&gt;&gt;$1</a>-<a href="#${key}_$2">&gt;&gt;$2</a>`)
-                    thread.res.push({ "from": tmp[0], "mail": tmp[1], "date_id": tmp[2], "message": tmp[3] })
-                    if (tmp[4]) {
-                        thread.title = tmp[4]
+            let key = dat.toString().split(".")[0]
+            xhr.open('GET', baseurl + bbs + "/dat/" + dat, false);
+            xhr.onload = function () {
+                let datas = xhr.responseText.split("\n")
+                let thread = { "title": "", "res": [] }
+                datas.forEach(data => {
+                    if (data != "") {
+                        let tmp = data.split("<>")
+                        tmp[3] = tmp[3].replace(/&gt;&gt;([0-9]+)(?![-\d])/i, `<a href="#${key}_$1">&gt;&gt;$1</a>`)
+                        tmp[3] = tmp[3].replace(/&gt;&gt;([0-9]+)\-([0-9]+)/i, `<a href="#${key}_$1">&gt;&gt;$1</a>-<a href="#${key}_$2">&gt;&gt;$2</a>`)
+                        thread.res.push({ "from": tmp[0], "mail": tmp[1], "date_id": tmp[2], "message": tmp[3] })
+                        if (tmp[4]) {
+                            thread.title = tmp[4]
+                        }
                     }
+                });
+                let addres = (res, i) => {
+                    let dt = createElementFromHTML(`<dt class="header" id="${key}_${i}">${i}<span class="name">${res.from}</span>${res.mail ? `<span class="mail">${res.mail}</span>` : ""}${res.date_id}</dt>`)
+                    let rmbtn = createElementFromHTML(`<div class="closebtn" style="margin-left:1em"></div>`)
+                    rmbtn.addEventListener("click", () => {
+                        if (window.confirm(`レスを削除しますか?\r\n  板: ${bbstotitle[bbs]}  スレッド: ${thread.title}\r\n  書き込み: ${i}.${res.from}\r\n  ${res.message}`)) {
+                            let xhr = new XMLHttpRequest();
+                            xhr.open("POST", adminbaseurl + "deleteRes", false);
+                            xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                            xhr.send("bbs=" + bbs + "&key=" + key + "&resnum=" + i);
+                            window.location.reload();
+                        }
+                    })
+                    dt.insertAdjacentElement("beforeend", rmbtn)
+
+                    dl.insertAdjacentElement("beforeend", dt)
+                    dl.insertAdjacentHTML("beforeend", `<dd class="res">${res.message}</dd>`)
                 }
-            });
-            let addres = (res, i) => {
-                let dt = createElementFromHTML(`<dt class="header" id="${key}_${i}">${i}<span class="name">${res.from}</span>${res.mail ? `<span class="mail">${res.mail}</span>` : ""}${res.date_id})</dt>`)
+
+                let dl = createElementFromHTML(`<dl class="box thread" id="${key}">`)
+                let dt = createElementFromHTML(`<dt class="title row"><div style="flex-grow:1;">${thread.title}</div></dt>`)
                 let rmbtn = createElementFromHTML(`<div class="closebtn" style="margin-left:1em"></div>`)
                 rmbtn.addEventListener("click", () => {
-                    if (window.confirm(`レスを削除しますか?\r\n  板: ${bbstotitle[bbs]}  スレッド: ${thread.title}\r\n  書き込み: ${i}.${res.from}\r\n  ${res.message}`)) {
+                    if (window.confirm(`スレを削除しますか?\r\n  板: ${bbstotitle[bbs]}  スレッド: ${thread.title}\r\n`)) {
                         let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/" + admin + "/deleteRes", false);
+                        xhr.open("POST", adminbaseurl + "deleteThread", false);
                         xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-                        xhr.send("bbs=" + bbs + "&key=" + key + "&resnum=" + i);
+                        xhr.send("bbs=" + bbs + "&key=" + key);
                         window.location.reload();
                     }
                 })
                 dt.insertAdjacentElement("beforeend", rmbtn)
-
                 dl.insertAdjacentElement("beforeend", dt)
-                dl.insertAdjacentHTML("beforeend", `<dd class="res">${res.message}</dd>`)
-            }
-
-            let dl = createElementFromHTML(`<dl class="box thread" id="${key}">`)
-            let dt = createElementFromHTML(`<dt class="title row"><div style="flex-grow:1;">${thread.title}</div></dt>`)
-            let rmbtn = createElementFromHTML(`<div class="closebtn" style="margin-left:1em"></div>`)
-            rmbtn.addEventListener("click", () => {
-                if (window.confirm(`スレを削除しますか?\r\n  板: ${bbstotitle[bbs]}  スレッド: ${thread.title}\r\n`)) {
-                    let xhr = new XMLHttpRequest();
-                    xhr.open("POST", "/" + admin + "/deleteThread", false);
-                    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-                    xhr.send("bbs=" + bbs + "&key=" + key);
-                    window.location.reload();
+                if (thread.res.length > 10 && is_toppage) {
+                    addres(thread.res[0], 1)
+                    thread.res.slice(-9).forEach((res, i) => {
+                        addres(res, thread.res.length - 8 + i)
+                    })
+                } else {
+                    thread.res.forEach((res, i) => {
+                        addres(res, i + 1)
+                    })
                 }
-            })
-            dt.insertAdjacentElement("beforeend", rmbtn)
-            dl.insertAdjacentElement("beforeend", dt)
-            if (thread.res.length > 10 && toppage) {
-                addres(thread.res[0], 1)
-                thread.res.slice(-9).forEach((res, i) => {
-                    addres(res, thread.res.length - 8 + i)
-                })
-            } else {
-                thread.res.forEach((res, i) => {
-                    addres(res, i + 1)
-                })
-            }
-            if (toppage) {
-                dl.insertAdjacentHTML("afterend", "<hr>")
-            }
-            list.insertAdjacentElement('beforeend', dl)
-        };
-        xhr.send();
-    }
-    function loadboard(baseurl,bbs) {
-        if (searchParams.has("key")) {
-            let key = searchParams.get("key")
-            getdat(baseurl,bbs, searchParams.get("key") + ".dat")
-        } else {
-            document.getElementById("thread_catalog").classList.remove("disabled")
-            let xhr = new XMLHttpRequest();
-            let menu = document.getElementById("thread_menu")
-            xhr.open('GET', baseurl + bbs + "/subject.txt");
-            xhr.send();
-            xhr.onload = function () {
-                let datas = xhr.responseText.split("\n")
-                let threads = []
-                datas.forEach((data, i) => {
-                    if (data != "") {
-                        let tmp = data.split("<>")
-                        let dat = tmp[0]
-                        getdat(baseurl,bbs, dat, true)
-                        let key = dat.split('.')[0]
-                        menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?key=${key}&bbs=${bbs}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
-                    }
-                });
+                if (is_toppage) {
+                    dl.insertAdjacentHTML("afterend", "<hr>")
+                }
+                list.insertAdjacentElement('beforeend', dl)
             };
+            xhr.send();
         }
-    }
-    function getJSON(url) {
-        const xhr = new XMLHttpRequest();
-        let jsonObj
-        xhr.open("GET", url, false);
-        xhr.setRequestHeader('cache-control', 'no-cache');
-        xhr.onload = () => {
-            jsonObj = JSON.parse(xhr.responseText);
+        function loadboard(baseurl, bbs) {
+            if (searchParams.has("key")) {
+                let key = searchParams.get("key")
+                getdat(baseurl, bbs, searchParams.get("key") + ".dat")
+            } else {
+                document.getElementById("thread_catalog").classList.remove("disabled")
+                let xhr = new XMLHttpRequest();
+                let menu = document.getElementById("thread_menu")
+                xhr.open('GET', baseurl + bbs + "/subject.txt");
+                xhr.onload = function () {
+                    if (xhr.status == 400) {
+                        menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?">1:</a> <a href="?">bbsが不正です!</a></p>`);
+                        return
+                    }
+                    let datas = xhr.responseText.split("\n")
+                    let threads = []
+                    datas.forEach((data, i) => {
+                        if (data != "") {
+                            let tmp = data.split("<>")
+                            let dat = tmp[0]
+                            getdat(baseurl, bbs, dat, true)
+                            let key = dat.split('.')[0]
+                            menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?key=${key}&bbs=${bbs}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
+                        }
+                    });
+                };
+                xhr.send();
+            }
         }
-        xhr.send();
-        return jsonObj
-    }
-    function createElementFromHTML(html) {
-        let template = document.createElement('template');
-        html = html.trim(); // Never return a text node of whitespace as the result
-        template.innerHTML = html;
-        return template.content.firstElementChild;
-    }
-    window.onload = () => {
-        let boards = getJSON("./boardList")
-        let baseurl
-        for (let bd of boards.data) {
-            baseurl = bd.baseurl ?? "/"
-            let elem = createElementFromHTML(`<a id="board_${bd.bbs}" href="?bbs=${bd.bbs}">${bd.title}</a>`)
-            document.getElementById("board_list").insertAdjacentElement("beforeend", elem)
-            elem.addEventListener("click", () => {
-                loadboard(baseurl,bd.bbs)
+        function setconfig(elem) {
+            let xhr = new XMLHttpRequest();
+            let jsonObj
+            xhr.open("POST", adminbaseurl + "setConfig", true);
+            xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xhr.setRequestHeader('cache-control', 'no-cache');
+            xhr.onload = () => {
+                jsonObj = JSON.parse(xhr.responseText);
+                if (jsonObj.status != "Success") alert(JSON.stringify(jsonObj))
+                loadconfigs()
+            }
+
+            let q = ""
+            if (searchParams.has("bbs")) {
+                q += "bbs=" + searchParams.get("bbs")
+                if (searchParams.has("key")) {
+                    q += "&key=" + searchParams.get("key")
+                }
+            }
+            let value = elem.value
+            if (elem.type == "number") value = parseInt(elem.value)
+            if (elem.type == "checkbox") value = elem.checked
+            q += `${q != "" ? "&json=" : "json="}` + JSON.stringify({
+                "key": elem.name,
+                "value": value
             })
-            bbstotitle[bd.bbs] = bd.title
+            xhr.send(q);
         }
-        if (searchParams.has("bbs")) {
-            loadboard(baseurl,searchParams.get("bbs"))
+        function deleteconfig(key) {
+            if (window.confirm(`設定を削除しますか?`)) {
+                let xhr = new XMLHttpRequest();
+                let jsonObj
+                xhr.open("POST", adminbaseurl + "deleteConfig", true);
+                xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                xhr.setRequestHeader('cache-control', 'no-cache');
+                xhr.onload = () => {
+                    jsonObj = JSON.parse(xhr.responseText);
+                    if (jsonObj.status != "Success") alert(JSON.stringify(jsonObj))
+                    loadconfigs()
+                }
+
+                let q = ""
+                if (searchParams.has("bbs")) {
+                    q += "bbs=" + searchParams.get("bbs")
+                    if (searchParams.has("key")) {
+                        q += "&key=" + searchParams.get("key")
+                    }
+                }
+                q += `${q != "" ? "&json=" : "json="}` + JSON.stringify({
+                    "key": key,
+                })
+                xhr.send(q);
+            }
         }
-    }
-</script>
-<style>
-    body {
-        /* background-image: url("./ba.gif"); */
-        margin: 0;
-    }
-
-    .list {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 95%;
-        margin: 0 auto;
-    }
-
-    .thread {
-        background-color: #EFEFEF;
-    }
-
-    .head {
-        background: #CFC;
-    }
-
-    .foot {
-        background: #CFC;
-    }
-
-    .box {
-        width: 100%;
-        margin: 0.5em 0;
-        padding: 0.5em;
-        border-radius: 0.5em / 0.5em;
-        border: 1px solid #000;
-        box-sizing: border-box;
-    }
-
-    .thread_menu {
-        margin: 0.5em 0;
-        border-top: 0.5em solid #BEB;
-        padding-left: 0.5em;
-        border-bottom: 0.5em solid #BEB;
-        border-radius: 0.5em / 0.5em;
-        height: 15em;
-        overflow-y: scroll;
-        background: #BEB;
-    }
-
-    .thread_menu_content {
-        margin: 0;
-        padding: 0;
-        font-size: 0.75em;
-    }
-
-    .title {
-        font-size: 1.5em;
-        color: red;
-        margin-bottom: 0.7em;
-    }
-
-    .name {
-        color: green;
-        font-weight: bold;
-        margin-right: 0.5em;
-        margin-left: 0.5em;
-    }
-
-    .mail {
-        margin-right: 0.5em;
-    }
-
-    .header {
-        margin: 0;
-        padding: 0;
-        font-size: 1.00em;
-    }
-
-    .res {
-        margin-bottom: 1em;
-        margin-inline-start: 1em;
-    }
-
-    .common {
-        padding: 0.5em;
-        border-radius: 0.50em / 0.50em;
-        background: #39F;
-        color: #FFF;
-        font-size: 1.00em;
-        display: inline-block;
-    }
-
-    .disabled {
-        display: none;
-    }
-
-
-    .row {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-    }
-
-    .closebtn {
-        margin-left: 0.2em;
-        vertical-align: middle;
-        border-radius: 4px;
-        width: 1em;
-        height: 1em;
-        position: relative;
-        display: inline-block;
-        background: rgb(255, 0, 0);
-        cursor: pointer;
-    }
-
-    .closebtn::before,
-    .closebtn::after {
-        /* 共通設定 */
-        content: " ";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 20%;
-        /* 棒の幅（太さ） */
-        height: 100%;
-        /* 棒の高さ */
-        background: rgb(255, 255, 255);
-        border-radius: 2.5px;
-        /* 棒の四隅の丸み*/
-    }
-
-    .closebtn::before {
-        transform: translate(-50%, -50%) rotate(45deg);
-    }
-
-    .closebtn::after {
-        transform: translate(-50%, -50%) rotate(-45deg);
-    }
-</style>
+        function saveallconfig() {
+            if (window.confirm(`設定を保存しますか?`)) {
+                let q = ""
+                if (searchParams.has("bbs")) {
+                    q += "bbs=" + searchParams.get("bbs")
+                    if (searchParams.has("key")) {
+                        q += "&key=" + searchParams.get("key")
+                    }
+                }
+                q += `${q != "" ? "&json=" : "json="}`
+                Array.from(conf_list.children).forEach(e => {
+                    let ve = e.firstElementChild.nextElementSibling.firstElementChild.nextElementSibling
+                    let be = ve.nextElementSibling
+                    if (!be.disabled) {
+                        let xhr = new XMLHttpRequest();
+                        xhr.open("POST", adminbaseurl + "setConfig", false);
+                        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                        xhr.setRequestHeader('cache-control', 'no-cache');
+                        xhr.onload = () => {
+                            jsonObj = JSON.parse(xhr.responseText);
+                            if (jsonObj.status != "Success") alert(JSON.stringify(jsonObj))
+                        }
+                        let value = ve.value
+                        if (ve.type == "number") value = parseInt(ve.value)
+                        if (ve.type == "checkbox") value = ve.checked
+                        xhr.send(q + JSON.stringify({
+                            "key": ve.name,
+                            "value": value
+                        }))
+                    }
+                })
+                loadconfigs()
+            }
+        }
+        function loadconfigs() {
+            let xhr = new XMLHttpRequest();
+            conf_list.innerHTML = ""
+            xhr.open("POST", adminbaseurl + "configList");
+            let q = ""
+            if (searchParams.has("bbs")) {
+                q += "bbs=" + searchParams.get("bbs")
+                if (searchParams.has("key")) {
+                    q += "&key=" + searchParams.get("key")
+                }
+            }
+            xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xhr.onload = () => {
+                console.log(xhr.responseText)
+                jsonObj = JSON.parse(xhr.responseText);
+                if (jsonObj.data)
+                    Object.keys(jsonObj.data).forEach(function (key) {
+                        console.log([key] + ": " + jsonObj.data[key]);
+                        let type = typeof jsonObj.data[key]
+                        let elem = createElementFromHTML(`<tr>
+                    <td>${key}</td>
+                    <td>
+                        <select onchange="this.nextElementSibling.type=this.value" disabled>
+                        <option value="text" ${type == "string" ? "selected" : ""}>テキスト</option>
+                        <option value="number" ${type == "number" ? "selected" : ""}>数字</option>
+                        <option value="checkbox" ${type == "boolean" ? "selected" : ""}>ブーリアン</option>
+                        </select>
+                        <input type="${type == "number" ? "number" : type == "boolean" ? "checkbox" : "text"}" name="${key}" value=${jsonObj.data[key]} ${type == "boolean" && jsonObj.data[key] == true ? "checked" : ""} style="min-width:5rem" oninput="this.nextElementSibling.disabled=false">
+                        <input type="button" value="更新" disabled onclick="this.disabled=true;setconfig(this.previousElementSibling)">
+                    </td>
+                    <td><div class="closebtn" onclick='deleteconfig("${key}")'></div></td>
+                </tr>`)
+                        conf_list.insertAdjacentElement("beforeend", elem)
+                    });
+                let elem = createElementFromHTML(`<tr>
+                <td><input type="text" value="" style="min-width:5em" oninput="let btn = this.parentElement.nextElementSibling.lastElementChild;btn.disabled=(this.value=='');btn.previousElementSibling.name=this.value" placeholder="Key"></td>
+                <td>
+                    <select name="horoscope" onchange="this.nextElementSibling.type=this.value">
+                    <option value="text" selected}>テキスト</option>
+                    <option value="number"}>数字</option>
+                    <option value="checkbox">ブーリアン</option>
+                    </select>
+                    <input type="text" value="" name style="min-width:5rem" placeholder="Value">
+                    <input type="button" value="追加" disabled onclick="this.disabled=true;setconfig(this.previousElementSibling)">
+                </td>
+                <td><input type="button" value="全ての変更を保存" onclick="this.disabled=true;saveallconfig()"></td>
+            </tr>`)
+                conf_list.insertAdjacentElement("beforeend", elem)
+            }
+            xhr.send(q);
+        }
+        function getJSON(url) {
+            let xhr = new XMLHttpRequest();
+            let jsonObj
+            xhr.open("GET", url, false);
+            xhr.setRequestHeader('cache-control', 'no-cache');
+            xhr.onload = () => {
+                jsonObj = JSON.parse(xhr.responseText);
+            }
+            xhr.send();
+            return jsonObj
+        }
+        function createElementFromHTML(html) {
+            let template = document.createElement('template');
+            html = html.trim(); // Never return a text node of whitespace as the result
+            template.innerHTML = html;
+            return template.content.firstElementChild;
+        }
+        window.onload = () => {
+            let boards = getJSON("./boardList")
+            let baseurl
+            for (let bd of boards.data) {
+                baseurl = bd.baseurl ?? "/"
+                let elem = createElementFromHTML(`<div style="position:relative"><a id="board_${bd.bbs}" href="?bbs=${bd.bbs}">${bd.title}</a></div>`)
+                document.getElementById("board_list").insertAdjacentElement("beforeend", elem)
+                let rmbtn = createElementFromHTML(`<div class="closebtn" style="position:absolute;right:0;"></div>`)
+                rmbtn.addEventListener("click", (e) => {
+                    e.stopPropagation()
+                    if (window.confirm(`板を削除しますか?\r\n  板: ${bbstotitle[bd.bbs]}`)) {
+                        let xhr = new XMLHttpRequest();
+                        xhr.open("POST", adminbaseurl + "deleteBoard", false);
+                        xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+                        xhr.send("bbs=" + bd.bbs);
+                        window.location.reload();
+                    }
+                })
+                elem.insertAdjacentElement("beforeend", rmbtn)
+                elem.addEventListener("click", () => {
+                    loadboard(baseurl, bd.bbs)
+                })
+                bbstotitle[bd.bbs] = bd.title
+            }
+            document.getElementById("newboard_button").onclick = () => {
+                newboard(baseurl, document.getElementById("newboard_bbs").value, document.getElementById("newboard_title").value)
+            }
+            if (searchParams.has("bbs")) {
+                loadboard(baseurl, searchParams.get("bbs"))
+            }
+            loadconfigs()
+        }
+    </script>
+    <style>
+        * {
+            max-width: 100%;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            /* background-image: url("./ba.gif"); */
+            background-color: #dac6b7;
+            margin: 0;
+        }
+        h1,h2,h3,h4,h5,h6 {
+            white-space: nowrap;
+        }
+        .list {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 95%;
+            margin: 0 auto;
+        }
+        .thread {
+            background-color: #EFEFEF;
+        }
+        .head {
+            background: #CFC;
+        }
+        .foot {
+            background: #CFC;
+        }
+        .box {
+            width: 100%;
+            margin: 0.5em 0;
+            padding: 0.5em;
+            border-radius: 0.5em / 0.5em;
+            border: 1px solid #000;
+            box-sizing: border-box;
+            overflow-wrap: break-word;
+        }
+        .thread_menu {
+            margin: 0.5em 0;
+            border-top: 0.5em solid #BEB;
+            padding-left: 0.5em;
+            border-bottom: 0.5em solid #BEB;
+            border-radius: 0.5em / 0.5em;
+            height: 15em;
+            overflow-y: scroll;
+            background: #BEB;
+        }
+        .thread_menu_content {
+            margin: 0;
+            padding: 0;
+            font-size: 0.75em;
+        }
+        .title {
+            font-size: 1.5em;
+            color: red;
+            margin-bottom: 0.7em;
+        }
+        .name {
+            color: green;
+            font-weight: bold;
+            margin-right: 0.5em;
+            margin-left: 0.5em;
+        }
+        .mail {
+            margin-right: 0.5em;
+        }
+        .header {
+            margin: 0;
+            padding: 0;
+            font-size: 1.00em;
+        }
+        .res {
+            margin-bottom: 1em;
+            margin-inline-start: 1em;
+        }
+        .common {
+            padding: 0.5em;
+            border-radius: 0.50em / 0.50em;
+            background: #39F;
+            color: #FFF;
+            font-size: 1.00em;
+            display: inline-block;
+        }
+        .disabled {
+            display: none;
+        }
+        .row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        .closebtn {
+            margin-left: 0.2em;
+            vertical-align: middle;
+            border-radius: 4px;
+            width: 1em;
+            height: 1em;
+            position: relative;
+            display: inline-block;
+            background: rgb(255, 0, 0);
+            cursor: pointer;
+        }
+        .closebtn::before,
+        .closebtn::after {
+            /* 共通設定 */
+            content: " ";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20%;
+            /* 棒の幅（太さ） */
+            height: 100%;
+            /* 棒の高さ */
+            background: rgb(255, 255, 255);
+            border-radius: 2.5px;
+            /* 棒の四隅の丸み*/
+        }
+        .closebtn::before {
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+        .closebtn::after {
+            transform: translate(-50%, -50%) rotate(-45deg);
+        }
+    </style>
+</body>
 
 </html>

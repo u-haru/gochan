@@ -53,6 +53,13 @@ func (c *Config) SetParent(p *Config) {
 	c.parent = p
 }
 
+func (c *Config) AllValues() map[string]interface{} {
+	if c == nil {
+		return nil
+	}
+	return c.vals
+}
+
 func (c *Config) Get(k string, to interface{}) error {
 	if c == nil {
 		return errNilConf
@@ -170,6 +177,30 @@ func (c *Config) Set(k string, from interface{}) error {
 	return nil
 }
 
+func (c *Config) SetWithReflect(k string, from interface{}) error {
+	if c == nil {
+		return errNilConf
+	}
+	if c.vals == nil {
+		c.vals = map[string]interface{}{}
+	}
+	v, ok := c.vals[k]
+	if !ok {
+		return c.Set(k, from)
+	}
+
+	rt := reflect.ValueOf(v)
+	if rt.Type() != reflect.TypeOf(from) {
+		return errTypeMismatch
+	}
+
+	c.vals[k] = from
+	return nil
+}
+
+func (c *Config) Delete(k string) {
+	delete(c.vals, k)
+}
 func (c *Config) ExportJson(to io.Writer) error {
 	if c == nil {
 		return errNilConf

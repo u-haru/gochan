@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -34,12 +36,19 @@ type authkey struct {
 	str     string
 }
 
+type board struct {
+	BBS     string `json:"bbs,omitempty"`
+	Title   string `json:"title,omitempty"`
+	Baseurl string `json:"baseurl,omitempty"`
+}
+
 type Board struct {
 	Server *gochan.Server
 	Path   string
 	Hash   string
 	keys   []authkey
 	sync.Once
+	boards []board
 }
 
 func Hash(pass string) string {
@@ -95,6 +104,17 @@ func GenPassHash(username, password string) string {
 	return Hash(username + password)
 }
 
+func (abd *Board) updateboards() {
+	abd.boards = []board{}
+	for _, v := range abd.Server.Boards() {
+		abd.boards = append(abd.boards, board{
+			BBS:     v.BBS(),
+			Title:   v.Title(),
+			Baseurl: v.Server().Baseurl,
+		})
+	}
+	sort.Slice(abd.boards, func(i, j int) bool { return strings.Compare(abd.boards[i].BBS, abd.boards[j].BBS) == -1 })
+}
 func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	abd.Do(func() {
 		if !strings.HasPrefix(abd.Path, "/") {
@@ -125,30 +145,26 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case strings.HasSuffix(r.URL.Path, "/newBoard"):
 		{
-			abd.Server.NewBoard(bbs, boardname)
-			stat.Status = "Success"
+			if err := abd.Server.NewBoard(bbs, boardname); err == nil {
+				abd.updateboards()
+				stat.Status = "Success"
+			} else {
+				stat.Status = "Failed"
+				stat.Reason = err.Error()
+			}
 		}
 	case strings.HasSuffix(r.URL.Path, "/boardList"):
 		{
-			type bd struct {
-				BBS     string `json:"bbs,omitempty"`
-				Title   string `json:"title,omitempty"`
-				Baseurl string `json:"baseurl,omitempty"`
-			}
-			var boards []bd
-			for _, v := range abd.Server.Boards() {
-				boards = append(boards, bd{
-					BBS:     v.BBS(),
-					Title:   v.Title(),
-					Baseurl: v.Server().Baseurl,
-				})
+			if len(abd.boards) == 0 {
+				abd.updateboards()
 			}
 			stat.Status = "Success"
-			stat.Data = boards
+			stat.Data = abd.boards
 		}
 	case strings.HasSuffix(r.URL.Path, "/deleteBoard"):
 		{
 			if err := abd.Server.DeleteBoard(bbs); err == nil {
+				abd.updateboards()
 				stat.Status = "Success"
 			} else {
 				stat.Status = "Failed"
@@ -190,8 +206,123 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	case strings.HasSuffix(r.URL.Path, "/configList"):
+		{
+			if bbs == "" {
+				stat.Status = "Success"
+				stat.Data = abd.Server.Conf.AllValues()
+				break
+			}
+			bd, ok := abd.Server.Boards()[bbs]
+			if !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such board"
+				break
+			}
+			if key == "" {
+				stat.Status = "Success"
+				stat.Data = bd.Conf.AllValues()
+				break
+			}
+			th, ok := bd.Threads()[key]
+			if !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such thread"
+				break
+			}
+			stat.Status = "Success"
+			stat.Data = th.Conf.AllValues()
+		}
+	case strings.HasSuffix(r.URL.Path, "/setConfig"):
+		{
+			var conf struct {
+				Key   string      `json:"key"`
+				Value interface{} `json:"value"`
+			}
+			err := json.Unmarshal([]byte(r.PostFormValue("json")), &conf)
+			if err != nil {
+				stat.Status = "Failed"
+				stat.Reason = err.Error()
+				break
+			}
+			log.Println(r.FormValue("json"))
+			if bbs == "" {
+				if err := abd.Server.Conf.SetWithReflect(conf.Key, conf.Value); err != nil {
+					stat.Status = "Failed"
+					stat.Reason = err.Error()
+					break
+				}
+				stat.Status = "Success"
+				break
+			}
+			bd, ok := abd.Server.Boards()[bbs]
+			if !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such board"
+				break
+			}
+			if key == "" {
+				if err := bd.Conf.SetWithReflect(conf.Key, conf.Value); err != nil {
+					stat.Status = "Failed"
+					stat.Reason = err.Error()
+					break
+				}
+				stat.Status = "Success"
+				break
+			}
+			th, ok := bd.Threads()[key]
+			if !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such thread"
+				break
+			}
+			if err := th.Conf.SetWithReflect(conf.Key, conf.Value); err != nil {
+				stat.Status = "Failed"
+				stat.Reason = err.Error()
+				break
+			}
+			stat.Status = "Success"
+			break
+		}
+	case strings.HasSuffix(r.URL.Path, "/deleteConfig"):
+		{
+			var conf struct {
+				Key string `json:"key"`
+			}
+			json.Unmarshal([]byte(r.PostFormValue("json")), &conf)
+			if _, ok := gochan.Server_Conf[conf.Key]; ok {
+				stat.Status = "Failed"
+				stat.Reason = conf.Key + " cant be deleted"
+				break
+			}
+			if bbs == "" {
+				stat.Status = "Success"
+				abd.Server.Conf.Delete(conf.Key)
+				break
+			}
+			bd, ok := abd.Server.Boards()[bbs]
+			if !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such board"
+				break
+			}
+			if key == "" {
+				stat.Status = "Success"
+				bd.Conf.Delete(conf.Key)
+				break
+			}
+			th, ok := bd.Threads()[key]
+			if !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such thread"
+				break
+			}
+			stat.Status = "Success"
+			th.Conf.Delete(conf.Key)
+		}
 	}
 	if stat.Status != "" {
+		w.Header().Add("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(stat)
 	}
 }

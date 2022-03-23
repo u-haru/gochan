@@ -3,6 +3,7 @@
 <head>
     <title>適当な板</title>
     <meta charset="Shift_JIS">
+    <meta name="viewport" content="width=device-width, initial-scale=1,minimum-scale=1.0">
 </head>
 
 <body>
@@ -78,13 +79,15 @@
         const spl = location.pathname.split("/")
         const bbs = spl[spl.length-2]
         return `<div class="common">${key?"書き込み欄":"新規スレッド作成"}</div>
-            <div style="margin: 0.5em 0 0 2em; font-size: 0.75em;">
+            <div style="margin: 0.5em 2em; font-size: 0.75em;">
                 <form method="POST" action="/test/bbs.cgi" accept-charset="Shift-JIS">
                     <input type="submit" value="${key?"書き込み":"新規スレッド"}"><br>
-                    ${!key?`スレッドタイトル：<input type="text" name="subject" style="width: 24em;"><br>`:""}
-                    名前：<input type="text" name="FROM" style="width: 16em;"> E-mail：<input type="text" name="mail"
-                        style="width: 16em;"><br>
-                    <textarea style="min-width: 40em; height: 10.0em; word-wrap: break-word;" rows="4" cols="12"
+                    ${!key?`<div>スレッドタイトル：<input type="text" name="subject" style="width: 24em;"></div>`:""}
+                    <div>
+                        <div style="display:inline-block">名前：<input type="text" name="FROM" style="width: 16em;"></div>
+                        <div style="display:inline-block">E-mail：<input type="text" name="mail" style="width: 16em;"></div>
+                    </div>
+                    <textarea style="width: 40em; height: 10.0em; word-wrap: break-word;" rows="4" cols="12"
                         name="MESSAGE"></textarea>
                     <input type="hidden" name="bbs" value="${bbs}">
                     ${key?`<input type="hidden" name="key" value="${key}">`:""}
@@ -123,6 +126,9 @@
     }
 </script>
 <style>
+    * {
+        max-width: 100%;
+    }
     body {
         background-image: url("./ba.gif");
         margin: 0;
@@ -156,6 +162,7 @@
         border-radius: 0.5em / 0.5em;
         border: 1px solid #000;
         box-sizing: border-box;
+        overflow-wrap: break-word;
     }
 
     .thread_menu {
