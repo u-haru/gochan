@@ -8,11 +8,11 @@ LDFLAGS   = -w -s
 
 NAME	  = gochan
 ENTRY	  = ./cmd/$(NAME)
-
+BINDIR    = ./bin/
 
 .PHONY: build
 
 build:
-	$(GO_BUILD) -ldflags='$(LDFLAGS)' $(ENTRY)
+	$(GO_BUILD) -o $(BINDIR) -ldflags='$(LDFLAGS)' $(ENTRY)
 	@echo FINISHED!
 

@@ -1,3 +1,4 @@
 Server/admin/adminsetting.txt
 access.log
 domains.json
+./bin/
