@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -244,6 +245,10 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				stat.Status = "Failed"
 				stat.Reason = err.Error()
 				break
+			}
+			f, ok := conf.Value.(float64)
+			if ok && math.Floor(f) == f {
+				conf.Value = int(f)
 			}
 			log.Println(r.FormValue("json"))
 			if bbs == "" {

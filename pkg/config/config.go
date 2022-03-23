@@ -184,8 +184,8 @@ func (c *Config) SetWithReflect(k string, from interface{}) error {
 	if c.vals == nil {
 		c.vals = map[string]interface{}{}
 	}
-	v, ok := c.vals[k]
-	if !ok {
+	v, err := c.GetRaw(k)
+	if err == errNoKey {
 		return c.Set(k, from)
 	}
 

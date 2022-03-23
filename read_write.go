@@ -147,6 +147,18 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		}
 	}
 
+	if !th.Writable() { //書き込み後に書き込み不能になる →1000を踏んだ!
+		s, err := th.Conf.GetString("MAX_RES_OVER")
+		if err == nil {
+			th.AddRes(&Res{
+				From:    fmt.Sprintf("%d OVER!!!", th.num),
+				Date:    res.Date,
+				Message: fmt.Sprintf(s, th.num),
+				ID:      []byte("over_run"),
+			})
+		}
+	}
+
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
 	fmt.Fprintf(w, written, sv.Baseurl+bbs, key)
 	board.RefreshSubjects()

@@ -17,6 +17,7 @@ import (
 var Server_Conf map[string]interface{} = map[string]interface{}{
 	"DELETED_NAME":   "あぼーん",
 	"NONAME":         "名無しさん",
+	"MAX_RES_OVER":   "このスレッドは%dを超えたのでこれ以上書き込めません…<br>次のスレを立ててください。",
 	"MAX_RES":        1000,
 	"MAX_RES_LEN":    2048,
 	"MAX_THREAD":     30,
