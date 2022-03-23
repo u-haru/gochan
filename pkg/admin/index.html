@@ -277,7 +277,7 @@
                         <option value="number" ${type == "number" ? "selected" : ""}>数字</option>
                         <option value="checkbox" ${type == "boolean" ? "selected" : ""}>ブーリアン</option>
                         </select>
-                        <input type="${type == "number" ? "number" : type == "boolean" ? "checkbox" : "text"}" name="${key}" value=${jsonObj.data[key]} ${type == "boolean" && jsonObj.data[key] == true ? "checked" : ""} style="min-width:5rem" oninput="this.nextElementSibling.disabled=false">
+                        <input type="${type == "number" ? "number" : type == "boolean" ? "checkbox" : "text"}" name="${key}" value="${jsonObj.data[key]}" ${type == "boolean" && jsonObj.data[key] == true ? "checked" : ""} style="min-width:5rem" oninput="this.nextElementSibling.disabled=false">
                         <input type="button" value="更新" disabled onclick="this.disabled=true;setconfig(this.previousElementSibling)">
                     </td>
                     <td><div class="closebtn" onclick='deleteconfig("${key}")'></div></td>
