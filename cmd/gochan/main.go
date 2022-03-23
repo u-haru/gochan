@@ -30,6 +30,7 @@ func main() {
 	Server.Function.WriteChecker = messageChecker
 	Server.Function.ArchiveChecker = archiveChecker
 	Server.Function.RuleGenerator = RuleGenerator
+	Server.BBSMENU.Description = "BBSMENU@u-haru.com"
 	// Server.Baseurl = "/a/"
 
 	ab := &admin.Board{
@@ -37,7 +38,7 @@ func main() {
 		Path:   "/admin/",
 		Hash:   "noauth",
 	}
-	Server.HTTPServeMux.Handle(ab.Path, ab)
+	Server.Handle(ab.Path, ab)
 
 	go func() {
 		c := make(chan os.Signal, 1)

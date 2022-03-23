@@ -31,8 +31,8 @@ type Server struct {
 
 	Baseurl string
 
-	location     time.Location
-	HTTPServeMux http.ServeMux
+	location time.Location
+	http.ServeMux
 
 	Conf     config.Config
 	Function struct {
@@ -188,8 +188,8 @@ func (sv *Server) ListenAndServe(host, dir string) error {
 
 func (sv *Server) Serve(ln net.Listener, dir string) error {
 	sv.init(dir)
-	sv.HTTPServeMux.HandleFunc("/test/bbs.cgi", sv.bbs)
-	sv.HTTPServeMux.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
+	sv.HandleFunc("/test/bbs.cgi", sv.bbs)
+	sv.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
 		strs := strings.Split(r.URL.Path[1:], "/")
 
 		switch {
@@ -216,7 +216,7 @@ func (sv *Server) Serve(ln net.Listener, dir string) error {
 			http.ServeFile(w, r, sv.Dir+strings.TrimPrefix(r.URL.Path, sv.Baseurl))
 		}
 	})
-	return http.Serve(ln, &sv.HTTPServeMux)
+	return http.Serve(ln, sv)
 }
 
 func (sv *Server) searchboards() {
