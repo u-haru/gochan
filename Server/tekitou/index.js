@@ -88,14 +88,13 @@ function loadIframe(elem,src){
 		iframe.setAttribute("style","width:100%;border:none;")
 		elem.insertAdjacentElement("afterbegin",iframe)
 		let doc = iframe.contentWindow.document;
-		doc.open();
-		doc.write(xhr.responseText);
-		doc.close();
+		doc.firstElementChild.innerHTML=xhr.responseText
 		iframe.style.height = doc.firstElementChild.clientHeight+ "px"
 		observeDOM(doc.firstElementChild,()=>{
 			iframe.style.height = doc.firstElementChild.clientHeight+ "px"
 		})
 	}
+	xhr.overrideMimeType('text/html; charset=Shift_JIS')
 	xhr.send();
 }
 function createElementFromHTML(html) {
