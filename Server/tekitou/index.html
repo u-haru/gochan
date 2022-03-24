@@ -34,12 +34,42 @@
             </div>
         </div>
         <div class="box foot disabled">
+            <div id="headad" style="margin: 0 auto;width: fit-content;"></div>
+            <script>
+                (function(){
+                    let xhr = new XMLHttpRequest();
+                    xhr.open('GET', "/test/headad.txt");
+                    xhr.onload = function () {
+                        if (xhr.status%400>100 && xhr.responseText != ""){
+                            document.getElementById("headad").innerHTML = xhr.responseText
+                            document.getElementById("headad").parentElement.classList.remove("disabled")
+                        }
+                    }
+                    xhr.overrideMimeType('text/html; charset=Shift_JIS')
+                    xhr.send();
+                })()
+            </script>
         </div>
     </div>
     <div class="list" id="thread_list">
     </div>
     <div class="list">
         <div class="box foot disabled">
+            <div id="putad" style="margin: 0 auto;width: fit-content;"></div>
+            <script>
+                (function(){
+                    let xhr = new XMLHttpRequest();
+                    xhr.open('GET', "/test/putad.txt");
+                    xhr.onload = function () {
+                        if (xhr.status%400>100 && xhr.responseText != ""){
+                            document.getElementById("putad").innerHTML = xhr.responseText
+                            document.getElementById("putad").parentElement.classList.remove("disabled")
+                        }
+                    }
+                    xhr.overrideMimeType('text/html; charset=Shift_JIS')
+                    xhr.send();
+                })()
+            </script>
         </div>
         <div class="box foot" id="writing_area">
         </div>
@@ -247,4 +277,5 @@
         display: none;
     }
 </style>
+
 </html>
