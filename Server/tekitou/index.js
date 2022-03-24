@@ -66,6 +66,38 @@ function loadsubs(callback){
 	};
 	xhr.send();
 }
+//https://stackoverflow.com/questions/3219758/detect-changes-in-the-dom
+function observeDOM( obj, callback ){
+	const MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
+	if( !obj || obj.nodeType !== 1 ) return; 
+	if( MutationObserver ){
+		let mutationObserver = new MutationObserver(callback)
+		mutationObserver.observe( obj, { childList:true, subtree:true })
+		return mutationObserver
+	}else if( window.addEventListener ){
+		obj.addEventListener('DOMNodeInserted', callback, false)
+		obj.addEventListener('DOMNodeRemoved', callback, false)
+	}
+}
+function loadIframe(elem,src){
+	let xhr = new XMLHttpRequest();
+	xhr.open('GET', src);
+	xhr.onload = function () {
+		let iframe = document.createElement('iframe');
+		iframe.setAttribute("scrolling","no")
+		iframe.setAttribute("style","width:100%;border:none;")
+		elem.insertAdjacentElement("afterbegin",iframe)
+		let doc = iframe.contentWindow.document;
+		doc.open();
+		doc.write(xhr.responseText);
+		doc.close();
+		iframe.style.height = doc.firstElementChild.clientHeight+ "px"
+		observeDOM(doc.firstElementChild,()=>{
+			iframe.style.height = doc.firstElementChild.clientHeight+ "px"
+		})
+	}
+	xhr.send();
+}
 function createElementFromHTML(html) {
 	let template = document.createElement('template');
 	html = html.trim(); // Never return a text node of whitespace as the result

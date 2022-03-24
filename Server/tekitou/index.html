@@ -33,40 +33,20 @@
 			<div class="common">この板の主なスレッド</div>
 			<div class="menu" id="thread_menu"></div>
 		</div>
-		<div class="box foot disabled">
-			<div id="headad" style="margin: 0 auto;width: fit-content;"></div>
+		<div class="box foot" id="headad">
 			<script>
 				window.addEventListener("load",()=>{
-					let xhr = new XMLHttpRequest();
-					xhr.open('GET', "/test/headad.txt");
-					xhr.onload = function () {
-						if (xhr.status%400>100 && xhr.responseText != ""){
-							document.getElementById("headad").innerHTML = xhr.responseText
-							document.getElementById("headad").parentElement.classList.remove("disabled")
-						}
-					}
-					xhr.overrideMimeType('text/html; charset=Shift_JIS')
-					xhr.send();
+					loadIframe(document.getElementById("headad"),"/test/headad.txt")
 				})
 			</script>
 		</div>
 	</div>
 	<div class="list" id="thread_list"></div>
 	<div class="list">
-		<div class="box foot disabled">
-			<div id="putad" style="margin: 0 auto;width: fit-content;"></div>
+		<div class="box foot" id="putad">
 			<script>
 				window.addEventListener("load",()=>{
-					let xhr = new XMLHttpRequest();
-					xhr.open('GET', "/test/putad.txt");
-					xhr.onload = function () {
-						if (xhr.status%400>100 && xhr.responseText != ""){
-							document.getElementById("putad").innerHTML = xhr.responseText
-							document.getElementById("putad").parentElement.classList.remove("disabled")
-						}
-					}
-					xhr.overrideMimeType('text/html; charset=Shift_JIS')
-					xhr.send();
+					loadIframe(document.getElementById("putad"),"/test/putad.txt")
 				})
 			</script>
 		</div>
@@ -158,6 +138,7 @@
 		border: 1px solid #000;
 		box-sizing: border-box;
 		overflow-wrap: break-word;
+		overflow: hidden;
 	}
 
 	.menu {
