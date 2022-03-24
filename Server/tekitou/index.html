@@ -6,7 +6,7 @@
     <title>適当な板</title>
     <meta name="viewport" content="width=device-width, initial-scale=1,minimum-scale=1.0">
     <!-- Put some header here -->
-    
+
     <!-- Put some header here -->
 </head>
 <body>
@@ -44,7 +44,9 @@
                     xhr.open('GET', "/test/headad.txt");
                     xhr.onload = function () {
                         if (xhr.status%400>100 && xhr.responseText != ""){
-                            document.getElementById("headad").innerHTML = xhr.responseText
+                            let template = document.createElement('template');
+                            template.innerHTML = xhr.responseText.trim();
+                            document.getElementById("headad").appendChild(template.content.firstElementChild)
                             document.getElementById("headad").parentElement.classList.remove("disabled")
                         }
                     }
@@ -65,7 +67,9 @@
                     xhr.open('GET', "/test/putad.txt");
                     xhr.onload = function () {
                         if (xhr.status%400>100 && xhr.responseText != ""){
-                            document.getElementById("putad").innerHTML = xhr.responseText
+                            let template = document.createElement('template');
+                            template.innerHTML = xhr.responseText.trim();
+                            document.getElementById("putad").appendChild(template.content.firstElementChild)
                             document.getElementById("putad").parentElement.classList.remove("disabled")
                         }
                     }
