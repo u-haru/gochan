@@ -17,7 +17,7 @@
 			<h2 class="common" id="title"><script>document.getElementById("title").innerHTML = document.title</script></h2>
 			<div class="menu" id="head">
 				<script>
-					window.addEventListener(()=>{
+					window.addEventListener("load",()=>{
 						let xhr = new XMLHttpRequest();
 						xhr.open('GET', "./head.txt");
 						xhr.onload = function () {
@@ -36,7 +36,7 @@
 		<div class="box foot disabled">
 			<div id="headad" style="margin: 0 auto;width: fit-content;"></div>
 			<script>
-				window.addEventListener(()=>{
+				window.addEventListener("load",()=>{
 					let xhr = new XMLHttpRequest();
 					xhr.open('GET', "/test/headad.txt");
 					xhr.onload = function () {
@@ -51,13 +51,12 @@
 			</script>
 		</div>
 	</div>
-	<div class="list" id="thread_list">
-	</div>
+	<div class="list" id="thread_list"></div>
 	<div class="list">
 		<div class="box foot disabled">
 			<div id="putad" style="margin: 0 auto;width: fit-content;"></div>
 			<script>
-				window.addEventListener(()=>{
+				window.addEventListener("load",()=>{
 					let xhr = new XMLHttpRequest();
 					xhr.open('GET', "/test/putad.txt");
 					xhr.onload = function () {
@@ -71,8 +70,7 @@
 				})
 			</script>
 		</div>
-		<div class="box foot" id="writing_area">
-		</div>
+		<div class="box foot" id="writing_area"></div>
 		<b><a href="./" style="white-space: nowrap;">ホーム</a></b>
 	</div>
 	<div style="margin:2rem auto;width: fit-content;">Copyright:u-haru@u-haru.com All Rights Reserved</div>
