@@ -88,7 +88,9 @@ function loadIframe(elem,src){
 		iframe.setAttribute("style","width:100%;border:none;")
 		elem.insertAdjacentElement("afterbegin",iframe)
 		let doc = iframe.contentWindow.document;
-		doc.firstElementChild.innerHTML=xhr.responseText
+		doc.open();
+		doc.write(xhr.responseText);
+		doc.close();
 		iframe.style.height = doc.firstElementChild.clientHeight+ "px"
 		observeDOM(doc.firstElementChild,()=>{
 			iframe.style.height = doc.firstElementChild.clientHeight+ "px"
