@@ -50,7 +50,7 @@ func main() {
 		fmt.Printf("Signal received: %s \n", s.String())
 		Server.Save()
 		close(c)
-		os.Exit(130)
+		os.Exit(0)
 	}()
 
 	log.Println("Listening on: " + Host)
