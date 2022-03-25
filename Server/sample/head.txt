@@ -1,0 +1,7 @@
+<p><h1 style="color: #F00">★サンプル板★</h1></p>
+<ul>
+    <li>この板はGolangの高速性を活かした掲示板を作ろうと作成されたものです。Golangで書かれた掲示板なのでgochanとしています。</li>
+    <li>ソースコードは<a href="https://github.com/u-haru/gochan">こちら</a>です。</li>
+    <li>まだまだ開発段階であるため、バグなどは多くあると思われます。もし発見した際はissueを建てるか開発者(<a href="https://twitter.com/8shkei">8shkei@twitter</a>)まで連絡してください。
+    何か要望があれば同様に連絡してください。</li>
+</ul>
