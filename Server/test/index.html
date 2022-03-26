@@ -96,7 +96,7 @@
 				threads.forEach(dl=>{
 					getdat("./dat/" + dl.id + ".dat",dat=>{
 						dl.innerHTML = parsedat(dl.id,dat,10)
-						+ `<hr><p style="margin: 0; padding: 0.5em;"><a href="?key=${dl.id}">全部読む</a> <a href="#thread_catalog">スレッド一覧</a></p>`
+						+ `<hr><p style="margin: 0; padding: 0.5em;"><a href="?key=${dl.id}">全部読む</a> <a href="#thread_catalog">スレッド一覧</a></p><hr>`
 						+ postarea(bbs,dl.id)
 					})
 				})
