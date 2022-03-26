@@ -3,9 +3,9 @@
 <head>
 	<meta charset="Shift_JIS">
 	<meta http-equiv="Content-Type" content="text/html; charset=Shift_JIS">
-	<title>サンプル板</title>
+	<title class="titlearea">読み込み中</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1,minimum-scale=1.0">
-	<script src="./index.js" defer></script>
+	<script src="/test/index.js" defer></script>
 </head>
 <body style="background-image: url(./ba.gif)">
 	<noscript>
@@ -13,8 +13,8 @@
 		専用ブラウザの使用を推奨しています<br>
 	</noscript>
 	<div class="list">
-		<div class="box head" id="thread_catalog">
-			<h2 class="common" id="title"><script>document.getElementById("title").innerHTML = document.title</script></h2>
+		<div class="box head">
+			<h2 class="common titlearea">読み込み中</h2>
 			<div class="menu" id="head">
 				<script>
 					window.addEventListener("load",()=>{
@@ -30,7 +30,7 @@
 			</div>
 		</div>
 		<div class="box head" id="thread_catalog">
-			<div class="common">この板の主なスレッド</div>
+			<div class="common">この板のスレッド</div>
 			<div class="menu" id="thread_menu"></div>
 		</div>
 		<div class="box foot" id="headad">
@@ -65,15 +65,21 @@
 		const thread_menu = document.getElementById("thread_menu")
 		let key = searchParams.get("key")
 
+		loadSetting("./SETTING.TXT",(setting)=>{
+			if("BBS_TITLE_ORIG" in setting){
+				Array.from(document.getElementsByClassName("titlearea")).forEach(e => { e.innerHTML=setting["BBS_TITLE_ORIG"] })
+			}
+		})
+
 		if (key) {
 			let dl = createElementFromHTML(`<dl class="box thread" id="${key}"></dl>`)
-			getdat(key,dat=>{
+			getdat("./dat/" + key + ".dat",dat=>{
 				dl.innerHTML = parsedat(key,dat,-1)
 			})
 			thread_list.insertAdjacentElement("beforeend",dl)
 			Array.from(document.getElementsByClassName("head")).forEach(e => { e.classList.add("disabled") })
 		} else {
-			loadsubs((datas)=>{
+			loadsubs("./subject.txt",(datas)=>{
 				/**@type {Array<HTMLElement>} */
 				let threads = []
 				datas.forEach((data,i)=>{
@@ -88,8 +94,10 @@
 					}
 				})
 				threads.forEach(dl=>{
-					getdat(dl.id,dat=>{
-						dl.innerHTML = parsedat(dl.id,dat,10) + "<hr>" + postarea(bbs,dl.id)
+					getdat("./dat/" + dl.id + ".dat",dat=>{
+						dl.innerHTML = parsedat(dl.id,dat,10)
+						+ `<hr><p style="margin: 0; padding: 0.5em;"><a href="?key=${dl.id}">全部読む</a> <a href="#thread_catalog">スレッド一覧</a></p>`
+						+ postarea(bbs,dl.id)
 					})
 				})
 			})

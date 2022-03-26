@@ -1,4 +1,5 @@
 {
     "TITLE":"サンプル板",
-    "Usage":"Rename Me to setting.json"
+    "Usage":"Rename Me to setting.json",
+    "Usage_WebUI":"make symbolic link ./index.html <==> /test/index.html"
 }

@@ -33,9 +33,9 @@ function parsedat(key,dat,shownum){
 
 	return dl
 }
-function getdat(key,callback) {
+function getdat(url,callback) {
 	let xhr = new XMLHttpRequest();
-	xhr.open('GET', "./dat/" + key + ".dat",true);
+	xhr.open('GET',url,true);
 	xhr.onload = function () {
 		callback(xhr.responseText)
 	};
@@ -58,10 +58,11 @@ function postarea(bbs,key) {
 				</form>
 			</div>`
 }
-function loadsubs(callback){
+function loadsubs(url,callback){
 	let xhr = new XMLHttpRequest();
-	xhr.open('GET', './subject.txt',true);
+	xhr.open('GET', url,true);
 	xhr.onload = function () {
+		if(xhr.status%400<100)return
 		callback(xhr.responseText.split("\n"))
 	};
 	xhr.send();
@@ -95,6 +96,24 @@ function loadIframe(elem,src){
 		observeDOM(doc.firstElementChild,()=>{
 			iframe.style.height = doc.firstElementChild.clientHeight+ "px"
 		})
+	}
+	xhr.overrideMimeType('text/html; charset=Shift_JIS')
+	xhr.send();
+}
+function loadSetting(url,callback){
+	let xhr = new XMLHttpRequest();
+	xhr.open('GET', url);
+	xhr.onload = function () {
+		let resps = xhr.responseText.split("\n")
+		let settings = {}
+		resps.forEach(line => {
+			let kv = line.split("=")
+			if(kv.length<2)return
+			let key = kv[0]
+			let value = kv[1]
+			settings[key] = value
+		});
+		callback(settings)
 	}
 	xhr.overrideMimeType('text/html; charset=Shift_JIS')
 	xhr.send();

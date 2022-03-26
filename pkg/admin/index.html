@@ -3,6 +3,7 @@
 <head>
 	<title>適当な板</title>
 	<meta charset="UTF-8">
+	<script src="/test/index.js" defer></script>
 </head>
 
 <body style="min-height: 100%">
@@ -55,113 +56,63 @@
 		const adminbaseurl = location.pathname
 		const conf_list = document.getElementById("config_list")
 		let bbstotitle = {}
-		function newboard(baseurl, bbs, boardname) {
-			if (window.confirm(`新しい板を作りますか?\r\n  URL: ${baseurl + bbs + "/"}  タイトル: ${boardname}`)) {
-				let xhr = new XMLHttpRequest();
-				xhr.open("POST", adminbaseurl + "newBoard", false);
-				xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-				xhr.send("bbs=" + bbs + "&boardname=" + boardname);
-				window.location.reload();
-			}
-		}
-		function getdat(baseurl, bbs, dat, is_toppage) {
-			let xhr = new XMLHttpRequest();
+		function parsedattoadmin(dl,bbs,key,dat,shownum){
+			dl.innerHTML = parsedat(key,dat,shownum)
 
-			let list = document.getElementById("thread_list")
-
-			let key = dat.toString().split(".")[0]
-			xhr.open('GET', baseurl + bbs + "/dat/" + dat, false);
-			xhr.onload = function () {
-				let datas = xhr.responseText.split("\n")
-				let thread = { "title": "", "res": [] }
-				datas.forEach(data => {
-					if (data != "") {
-						let tmp = data.split("<>")
-						tmp[3] = tmp[3].replaceAll(/&gt;&gt;([0-9]+)(?![-\d])/ig, `<a href="#${key}_$1">&gt;&gt;$1</a>`)
-						tmp[3] = tmp[3].replaceAll(/&gt;&gt;([0-9]+)\-([0-9]+)/ig, `<a href="#${key}_$1">&gt;&gt;$1</a>-<a href="#${key}_$2">&gt;&gt;$2</a>`)
-						tmp[3] = tmp[3].replaceAll(/([a-z]+:\/\/[!-9?-z]*)/ig, `<a href="$1">$1</a>`)
-						thread.res.push({ "from": tmp[0], "mail": tmp[1], "date_id": tmp[2], "message": tmp[3] })
-						if (tmp[4]) {
-							thread.title = tmp[4]
-						}
-					}
-				});
-				let addres = (res, i) => {
-					let dt = createElementFromHTML(`<dt class="header" id="${key}_${i}">${i}<span class="name">${res.from}</span>${res.mail ? `<span class="mail">${res.mail}</span>` : ""}${res.date_id}</dt>`)
-					let rmbtn = createElementFromHTML(`<div class="closebtn" style="margin-left:1em"></div>`)
-					rmbtn.addEventListener("click", () => {
-						if (window.confirm(`レスを削除しますか?\r\n  板: ${bbstotitle[bbs]}  スレッド: ${thread.title}\r\n  書き込み: ${i}.${res.from}\r\n  ${res.message}`)) {
-							let xhr = new XMLHttpRequest();
-							xhr.open("POST", adminbaseurl + "deleteRes", false);
-							xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-							xhr.send("bbs=" + bbs + "&key=" + key + "&resnum=" + i);
-							window.location.reload();
-						}
-					})
-					dt.insertAdjacentElement("beforeend", rmbtn)
-
-					dl.insertAdjacentElement("beforeend", dt)
-					dl.insertAdjacentHTML("beforeend", `<dd class="res">${res.message}</dd>`)
-				}
-
-				let dl = createElementFromHTML(`<dl class="box thread" id="${key}">`)
-				let dt = createElementFromHTML(`<dt class="title row"><div style="flex-grow:1;">${thread.title}</div></dt>`)
-				let rmbtn = createElementFromHTML(`<div class="closebtn" style="margin-left:1em"></div>`)
+			let titleel = dl.firstElementChild
+			let subject = titleel.innerHTML
+			titleel.classList.add("row")
+			titleel.innerHTML = `<div style="flex-grow:1;">${subject}</div>
+				<div class="closebtn" onclick="deletethis(this)" data-bbs="${bbs}" data-key="${key}" data-subject="${subject}"></div>`
+			Array.from(dl.getElementsByClassName("header")).forEach(e=>{
+				let resnum = e.id.split("_")[1]
+				let nameel = e.firstElementChild
+				let datemail = nameel.nextSibling.textContent
+				let rmbtn  = createElementFromHTML(`<div class="closebtn" style="margin-left:1em"></div>`)
 				rmbtn.addEventListener("click", () => {
-					if (window.confirm(`スレを削除しますか?\r\n  板: ${bbstotitle[bbs]}  スレッド: ${thread.title}\r\n`)) {
+					if (window.confirm(`レスを削除しますか?\r\n  板: ${bbs}(${bbstotitle[bbs]})  スレッド: ${key}(${subject})\r\n書き込み: ${(resnum)}.${nameel.textContent} ${datemail}\r\n  ${e.nextElementSibling.textContent}`)) {
 						let xhr = new XMLHttpRequest();
-						xhr.open("POST", adminbaseurl + "deleteThread", false);
+						xhr.open("POST", adminbaseurl + "deleteRes", false);
 						xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-						xhr.send("bbs=" + bbs + "&key=" + key);
+						xhr.send("bbs=" + bbs + "&key=" + key + "&resnum=" + resnum);
 						window.location.reload();
 					}
 				})
-				dt.insertAdjacentElement("beforeend", rmbtn)
-				dl.insertAdjacentElement("beforeend", dt)
-				if (thread.res.length > 10 && is_toppage) {
-					addres(thread.res[0], 1)
-					thread.res.slice(-9).forEach((res, i) => {
-						addres(res, thread.res.length - 8 + i)
-					})
-				} else {
-					thread.res.forEach((res, i) => {
-						addres(res, i + 1)
-					})
-				}
-				if (is_toppage) {
-					dl.insertAdjacentHTML("afterend", "<hr>")
-				}
-				list.insertAdjacentElement('beforeend', dl)
-			};
-			xhr.send();
+				e.insertAdjacentElement("beforeend",rmbtn)
+			})
 		}
 		function loadboard(baseurl, bbs) {
 			if (searchParams.has("key")) {
 				let key = searchParams.get("key")
-				getdat(baseurl, bbs, searchParams.get("key") + ".dat")
+				// getdat2(baseurl, bbs, searchParams.get("key") + ".dat")
+				let dl = createElementFromHTML(`<dl class="box thread" id="${key}"></dl>`)
+				getdat(baseurl + bbs +"/dat/" + key + ".dat",dat=>{
+					parsedattoadmin(dl,bbs,key,dat,-1)
+				})
+				thread_list.insertAdjacentElement("beforeend",dl)
+				// Array.from(document.getElementsByClassName("head")).forEach(e => { e.classList.add("disabled") })
 			} else {
 				document.getElementById("thread_catalog").classList.remove("disabled")
-				let xhr = new XMLHttpRequest();
-				let menu = document.getElementById("thread_menu")
-				xhr.open('GET', baseurl + bbs + "/subject.txt");
-				xhr.onload = function () {
-					if (xhr.status == 400) {
-						menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?">1:</a> <a href="?">bbsが不正です!</a></p>`);
-						return
-					}
-					let datas = xhr.responseText.split("\n")
+				loadsubs(baseurl + bbs + "/subject.txt",(datas)=>{
+					/**@type {Array<HTMLElement>} */
 					let threads = []
-					datas.forEach((data, i) => {
+					datas.forEach((data,i)=>{
 						if (data != "") {
 							let tmp = data.split("<>")
 							let dat = tmp[0]
-							getdat(baseurl, bbs, dat, true)
 							let key = dat.split('.')[0]
-							menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?key=${key}&bbs=${bbs}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
+							let dl = createElementFromHTML(`<dl class="box thread" id="${key}"><dt class="title">読み込み中</dt></dl>`)
+							threads.push(dl)
+							thread_list.insertAdjacentElement("beforeend",dl)
+							thread_menu.insertAdjacentHTML('beforeend', `<p class="thread_menu_content"><a href="?key=${key}&bbs=${bbs}">${i + 1}:</a> <a href="#${key}">${tmp[1]}</a></p>`);
 						}
-					});
-				};
-				xhr.send();
+					})
+					threads.forEach(dl=>{
+						getdat(baseurl + bbs +"/dat/" + dl.id + ".dat",dat=>{
+							parsedattoadmin(dl,bbs,dl.id,dat,10)
+						})
+					})
+				})
 			}
 		}
 		function setconfig(elem) {
@@ -303,54 +254,83 @@
 			}
 			xhr.send(q);
 		}
-		function getJSON(url) {
+		function getJSON(url,callback) {
 			let xhr = new XMLHttpRequest();
 			let jsonObj
-			xhr.open("GET", url, false);
+			xhr.open("GET", url, true);
 			xhr.setRequestHeader('cache-control', 'no-cache');
 			xhr.onload = () => {
 				jsonObj = JSON.parse(xhr.responseText);
+				callback(jsonObj)
 			}
 			xhr.send();
-			return jsonObj
 		}
-		function createElementFromHTML(html) {
-			let template = document.createElement('template');
-			html = html.trim(); // Never return a text node of whitespace as the result
-			template.innerHTML = html;
-			return template.content.firstElementChild;
-		}
-		window.onload = () => {
-			let boards = getJSON("./boardList")
-			let baseurl
-			for (let bd of boards.data) {
-				baseurl = bd.baseurl ?? "/"
-				let elem = createElementFromHTML(`<div style="position:relative"><a id="board_${bd.bbs}" href="?bbs=${bd.bbs}">${bd.title}</a></div>`)
-				document.getElementById("board_list").insertAdjacentElement("beforeend", elem)
-				let rmbtn = createElementFromHTML(`<div class="closebtn" style="position:absolute;right:0;"></div>`)
-				rmbtn.addEventListener("click", (e) => {
-					e.stopPropagation()
-					if (window.confirm(`板を削除しますか?\r\n  板: ${bbstotitle[bd.bbs]}`)) {
+		function deletethis(elem){
+			let bbs = elem.dataset.bbs
+			let title = elem.dataset.title
+
+			let key = elem.dataset.key
+			let subject = elem.dataset.subject
+
+			let resnum = elem.dataset.resnum
+			if(bbs){
+				if(!key){
+					if (window.confirm(`板を削除しますか?\r\n  板: ${bbs}(${bbstotitle[bbs]})`)) {
 						let xhr = new XMLHttpRequest();
 						xhr.open("POST", adminbaseurl + "deleteBoard", false);
 						xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-						xhr.send("bbs=" + bd.bbs);
+						xhr.send("bbs=" + bbs);
 						window.location.reload();
 					}
-				})
-				elem.insertAdjacentElement("beforeend", rmbtn)
-				elem.addEventListener("click", () => {
-					loadboard(baseurl, bd.bbs)
-				})
-				bbstotitle[bd.bbs] = bd.title
+				}else{
+					if(!resnum){
+						if (window.confirm(`スレを削除しますか?\r\n  板: ${bbs}(${bbstotitle[bbs]})  スレッド: ${key}${subject?"("+subject+")":""}\r\n`)) {
+							let xhr = new XMLHttpRequest();
+							xhr.open("POST", adminbaseurl + "deleteThread", false);
+							xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+							xhr.send("bbs=" + bbs + "&key=" + key);
+							window.location.reload();
+						}
+					}else{
+						if (window.confirm(`レスを削除しますか?\r\n  板: ${bbs}(${bbstotitle[bbs]})   スレッド: ${key}${subject?"("+subject+")":""}\r\n
+						レスナンバー: ${resnum}\r\n`)) {
+							let xhr = new XMLHttpRequest();
+							xhr.open("POST", adminbaseurl + "deleteRes", false);
+							xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+							xhr.send("bbs=" + bbs + "&key=" + key + "&resnum=" + i);
+							window.location.reload();
+						}
+					}
+				}
 			}
-			document.getElementById("newboard_button").onclick = () => {
-				newboard(baseurl, document.getElementById("newboard_bbs").value, document.getElementById("newboard_title").value)
-			}
-			if (searchParams.has("bbs")) {
-				loadboard(baseurl, searchParams.get("bbs"))
-			}
-			loadconfigs()
+		}
+		window.onload = () => {
+			getJSON("./boardList",boards=>{
+				let baseurl
+				for (let bd of boards.data) {
+					baseurl = bd.baseurl ?? "/"
+					document.getElementById("board_list").insertAdjacentHTML("beforeend",
+						`<div style="position:relative"><a id="board_${bd.bbs}" href="?bbs=${bd.bbs}">${bd.title}</a>
+							<div class="closebtn" style="position:absolute;right:0;" onclick="deletethis(this)" data-bbs="${bd.bbs}" data-title="${bd.title}"></div>
+							</div>`)
+					bbstotitle[bd.bbs] = bd.title
+				}
+				document.getElementById("newboard_button").onclick = () => {
+					let bbs = document.getElementById("newboard_bbs").value
+					let boardname = document.getElementById("newboard_title").value
+					if (window.confirm(`新しい板を作りますか?\r\n  URL: ${baseurl + bbs + "/"}  タイトル: ${boardname}`)) {
+						let xhr = new XMLHttpRequest();
+						xhr.open("POST", adminbaseurl + "newBoard", false);
+						xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+						xhr.send("bbs=" + bbs + "&boardname=" + boardname);
+						window.location.reload();
+					}
+				}
+				if (searchParams.has("bbs")) {
+					loadboard(baseurl, searchParams.get("bbs"))
+				}
+				loadconfigs()
+			})
 		}
 	</script>
 	<style>
@@ -370,12 +350,7 @@
 			font-size: 1.6rem;
 		}
 
-		h1,
-		h2,
-		h3,
-		h4,
-		h5,
-		h6 {
+		h1,h2,h3,h4,h5,h6 {
 			white-space: nowrap;
 		}
 

@@ -194,7 +194,6 @@ func (sv *Server) Serve(ln net.Listener, dir string) error {
 	sv.HandleFunc("/test/bbs.cgi", sv.bbs)
 	sv.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
 		strs := strings.Split(r.URL.Path[1:], "/")
-
 		switch {
 		case len(strs) >= 3 && strs[len(strs)-2] == "dat":
 			{
@@ -218,6 +217,9 @@ func (sv *Server) Serve(ln net.Listener, dir string) error {
 		default:
 			http.ServeFile(w, r, sv.Dir+strings.TrimPrefix(r.URL.Path, sv.Baseurl))
 		}
+	})
+	sv.HandleFunc("/test/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, sv.Dir+r.URL.Path)
 	})
 	return http.Serve(ln, sv)
 }
