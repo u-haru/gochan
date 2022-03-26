@@ -8,6 +8,8 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -149,6 +151,7 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err := abd.Server.NewBoard(bbs, boardname); err == nil {
 				abd.updateboards()
 				stat.Status = "Success"
+				abd.Server.GenBBSmenu()
 			} else {
 				stat.Status = "Failed"
 				stat.Reason = err.Error()
@@ -167,6 +170,7 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err := abd.Server.DeleteBoard(bbs); err == nil {
 				abd.updateboards()
 				stat.Status = "Success"
+				abd.Server.GenBBSmenu()
 			} else {
 				stat.Status = "Failed"
 				stat.Reason = err.Error()
@@ -324,6 +328,28 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			stat.Status = "Success"
 			th.Conf.Delete(conf.Key)
+		}
+	case strings.HasSuffix(r.URL.Path, "/saveConfig"):
+		{
+			bd, ok := abd.Server.Boards()[bbs]
+			if !ok {
+				stat.Status = "Failed"
+				stat.Reason = "No such board"
+				break
+			}
+			path := filepath.Clean(bd.Path() + "setting.json")
+			file, err := os.Create(path)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			defer file.Close()
+			if err := bd.Conf.ExportJson(file); err != nil {
+				stat.Status = "Failed"
+				stat.Reason = err.Error()
+				break
+			}
+			stat.Status = "Success"
 		}
 	}
 	if stat.Status != "" {

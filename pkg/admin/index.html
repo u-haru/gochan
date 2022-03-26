@@ -170,7 +170,7 @@
 			}
 		}
 		function saveallconfig() {
-			if (window.confirm(`設定を保存しますか?`)) {
+			if (window.confirm(`設定を適用しますか?`)) {
 				let q = ""
 				if (searchParams.has("bbs")) {
 					q += "bbs=" + searchParams.get("bbs")
@@ -203,6 +203,21 @@
 				loadconfigs()
 			}
 		}
+		function exportconfig() {
+			if (window.confirm(`設定を保存しますか?`)) {
+				let xhr = new XMLHttpRequest();
+				xhr.open("POST", adminbaseurl + "saveConfig", true);
+				xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+				xhr.setRequestHeader('cache-control', 'no-cache');
+				xhr.onload = () => {
+					jsonObj = JSON.parse(xhr.responseText);
+					if (jsonObj.status != "Success") alert(JSON.stringify(jsonObj))
+					loadconfigs()
+				}
+
+				xhr.send("bbs=" + searchParams.get("bbs"));
+			}
+		}
 		function loadconfigs() {
 			let xhr = new XMLHttpRequest();
 			conf_list.innerHTML = ""
@@ -223,18 +238,17 @@
 						console.log([key] + ": " + jsonObj.data[key]);
 						let type = typeof jsonObj.data[key]
 						let elem = createElementFromHTML(`<tr>
-					<td>${key}</td>
-					<td>
-						<select onchange="this.nextElementSibling.type=this.value" disabled>
-						<option value="text" ${type == "string" ? "selected" : ""}>テキスト</option>
-						<option value="number" ${type == "number" ? "selected" : ""}>数字</option>
-						<option value="checkbox" ${type == "boolean" ? "selected" : ""}>ブーリアン</option>
-						</select>
-						<input type="${type == "number" ? "number" : type == "boolean" ? "checkbox" : "text"}" name="${key}" value="${jsonObj.data[key]}" ${type == "boolean" && jsonObj.data[key] == true ? "checked" : ""} style="min-width:5rem" oninput="this.nextElementSibling.disabled=false">
-						<input type="button" value="更新" disabled onclick="this.disabled=true;setconfig(this.previousElementSibling)">
-					</td>
-					<td><div class="closebtn" onclick='deleteconfig("${key}")'></div></td>
-				</tr>`)
+							<td>${key}</td>
+							<td>
+								<select onchange="this.nextElementSibling.type=this.value" disabled>
+								<option value="text" ${type == "string" ? "selected" : ""}>テキスト</option>
+								<option value="number" ${type == "number" ? "selected" : ""}>数字</option>
+								<option value="checkbox" ${type == "boolean" ? "selected" : ""}>ブーリアン</option>
+								</select>
+								<input type="${type == "number" ? "number" : type == "boolean" ? "checkbox" : "text"}" name="${key}" value="${jsonObj.data[key]}" ${type == "boolean" && jsonObj.data[key] == true ? "checked" : ""} style="min-width:5rem" oninput="this.nextElementSibling.disabled=false">
+								<input type="button" value="更新" disabled onclick="this.disabled=true;setconfig(this.previousElementSibling)">
+							</td>
+							<td><div class="closebtn" onclick='deleteconfig("${key}")'></div></td></tr>`)
 						conf_list.insertAdjacentElement("beforeend", elem)
 					});
 				let elem = createElementFromHTML(`<tr>
@@ -248,7 +262,8 @@
 					<input type="text" value="" name style="min-width:5rem" placeholder="Value">
 					<input type="button" value="追加" disabled onclick="this.disabled=true;setconfig(this.previousElementSibling)">
 				</td>
-				<td><input type="button" value="全ての変更を保存" onclick="this.disabled=true;saveallconfig()"></td>
+				<td><input type="button" value="全ての変更を保存" onclick="this.disabled=true;saveallconfig()">
+					${searchParams.has("bbs")&&!searchParams.has("key")?"<input type=\"button\" value=\"設定をエクスポート\" onclick=\"this.disabled=true;exportconfig()\">":""}</td>
 			</tr>`)
 				conf_list.insertAdjacentElement("beforeend", elem)
 			}
