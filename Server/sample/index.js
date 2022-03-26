@@ -9,9 +9,9 @@ function parsedat(key,dat,shownum){
 	datsplit.forEach(res => {
 		if (res != "") {
 			let tmp = res.split("<>")
-			tmp[3] = tmp[3].replaceAll(/&gt;&gt;([0-9]+)(?![-\d])/i, `<a href="#${key}_$1">&gt;&gt;$1</a>`)
-			tmp[3] = tmp[3].replaceAll(/&gt;&gt;([0-9]+)\-([0-9]+)/i, `<a href="#${key}_$1">&gt;&gt;$1</a>-<a href="#${key}_$2">&gt;&gt;$2</a>`)
-			tmp[3] = tmp[3].replaceAll(/([a-z]+:\/\/[!-9?-z]*)/i, `<a href="$1">$1</a>`)
+			tmp[3] = tmp[3].replaceAll(/&gt;&gt;([0-9]+)(?![-\d])/ig, `<a href="#${key}_$1">&gt;&gt;$1</a>`)
+			tmp[3] = tmp[3].replaceAll(/&gt;&gt;([0-9]+)\-([0-9]+)/ig, `<a href="#${key}_$1">&gt;&gt;$1</a>-<a href="#${key}_$2">&gt;&gt;$2</a>`)
+			tmp[3] = tmp[3].replaceAll(/([a-z]+:\/\/[!-9?-z]*)/ig, `<a href="$1">$1</a>`)
 			thread.res.push({ "from": tmp[0], "mail": tmp[1], "date_id": tmp[2], "message": tmp[3] })
 			if (tmp[4]) {
 				thread.title = tmp[4]
