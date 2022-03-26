@@ -89,7 +89,7 @@
 				})
 				threads.forEach(dl=>{
 					getdat(dl.id,dat=>{
-						dl.innerHTML = parsedat(key,dat,10) + "<hr>" + postarea(bbs,key)
+						dl.innerHTML = parsedat(dl.id,dat,10) + "<hr>" + postarea(bbs,dl.id)
 					})
 				})
 			})
