@@ -27,7 +27,7 @@ var wdays = []string{"日", "月", "火", "水", "木", "金", "土"}
 var written = toSJIS(`<html>
 <head>
 	<title>書きこみました。</title>
-	<meta http-equiv="refresh" content="1;URL=%s/?key=%s">
+	<meta http-equiv="refresh" content="1;URL=%s">
 </head>
 <body>
 	書きこみが終わりました。<br>
@@ -160,7 +160,11 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-	fmt.Fprintf(w, written, sv.Baseurl+bbs, key)
+	link := sv.Baseurl + bbs + "/?key=" + key
+	if l := r.Header.Get("Referer"); l != "" && !strings.Contains(l, "/"+bbs+"/") {
+		link = l
+	}
+	fmt.Fprintf(w, written, link)
 	board.RefreshSubjects()
 }
 

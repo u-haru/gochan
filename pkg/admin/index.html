@@ -88,6 +88,7 @@
 				let dl = createElementFromHTML(`<dl class="box thread" id="${key}"></dl>`)
 				getdat(baseurl + bbs +"/dat/" + key + ".dat",dat=>{
 					parsedattoadmin(dl,bbs,key,dat,-1)
+					dl.insertAdjacentHTML("beforeend",postarea(bbs,key))
 				})
 				thread_list.insertAdjacentElement("beforeend",dl)
 				// Array.from(document.getElementsByClassName("head")).forEach(e => { e.classList.add("disabled") })
@@ -110,6 +111,8 @@
 					threads.forEach(dl=>{
 						getdat(baseurl + bbs +"/dat/" + dl.id + ".dat",dat=>{
 							parsedattoadmin(dl,bbs,dl.id,dat,10)
+							dl.insertAdjacentHTML("beforeend",`<hr><p style="margin: 0; padding: 0.5em;"><a href="?key=${dl.id}">全部読む</a> <a href="#thread_catalog">スレッド一覧</a></p><hr>`
+								+postarea(bbs,dl.id))
 						})
 					})
 				})
