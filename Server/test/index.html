@@ -31,10 +31,12 @@
 			<div class="common">この板のスレッド</div>
 			<div class="menu" id="thread_menu"></div>
 		</div>
-		<div class="box foot" id="headad">
+		<div class="box foot disabled" id="headad">
 			<script>
 				window.addEventListener("scriptload",()=>{
-					loadIframe(document.getElementById("headad"),"/test/headad.txt")
+					loadIframe(document.getElementById("headad"),"/test/headad.txt",()=>{
+						document.getElementById("headad").classList.remove("disabled")
+					})
 				})
 			</script>
 		</div>

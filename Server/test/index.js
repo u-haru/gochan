@@ -68,20 +68,10 @@ function loadsubs(url,callback){
 	};
 	xhr.send();
 }
-//https://stackoverflow.com/questions/3219758/detect-changes-in-the-dom
-function observeDOM( obj, callback ){
-	const MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
-	if( !obj || obj.nodeType !== 1 ) return; 
-	if( MutationObserver ){
-		let mutationObserver = new MutationObserver(callback)
-		mutationObserver.observe( obj, { childList:true, subtree:true })
-		return mutationObserver
-	}else if( window.addEventListener ){
-		obj.addEventListener('DOMNodeInserted', callback, false)
-		obj.addEventListener('DOMNodeRemoved', callback, false)
-	}
+function observeResize(obj,callback){
+	new ResizeObserver(callback).observe(obj)
 }
-function loadIframe(elem,src){
+function loadIframe(elem,src,callback){
 	let xhr = new XMLHttpRequest();
 	xhr.open('GET', src);
 	xhr.onload = function () {
@@ -94,10 +84,12 @@ function loadIframe(elem,src){
 		doc.open();
 		doc.write(xhr.responseText);
 		doc.close();
-		iframe.style.height = doc.firstElementChild.clientHeight+ "px"
-		observeDOM(doc.firstElementChild,()=>{
-			iframe.style.height = doc.firstElementChild.clientHeight+ "px"
+		doc.body.style.height = "min-content"
+		doc.documentElement.style.height = "min-content"
+		observeResize(doc.documentElement,()=>{
+			iframe.style.height = doc.documentElement.clientHeight+ "px"
 		})
+		if(callback)callback()
 	}
 	xhr.overrideMimeType('text/html; charset=Shift_JIS')
 	xhr.send();
