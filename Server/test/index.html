@@ -5,7 +5,7 @@
 	<meta http-equiv="Content-Type" content="text/html; charset=Shift_JIS">
 	<title class="titlearea">読み込み中</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1,minimum-scale=1.0">
-	<script src="/test/index.js" defer></script>
+	<script src="/test/index.js" async onload='window.dispatchEvent(new Event("scriptload"))'></script>
 </head>
 <body style="background-image: url(./ba.gif)">
 	<noscript>
@@ -17,15 +17,13 @@
 			<h2 class="common titlearea">読み込み中</h2>
 			<div class="menu" id="head">
 				<script>
-					window.addEventListener("load",()=>{
-						let xhr = new XMLHttpRequest();
-						xhr.open('GET', "./head.txt");
-						xhr.onload = function () {
-							document.getElementById("head").innerHTML = xhr.responseText
-						}
-						xhr.overrideMimeType('text/html; charset=Shift_JIS')
-						xhr.send();
-					})
+					let xhr = new XMLHttpRequest();
+					xhr.open('GET', "./head.txt");
+					xhr.onload = function () {
+						document.getElementById("head").innerHTML = xhr.responseText
+					}
+					xhr.overrideMimeType('text/html; charset=Shift_JIS')
+					xhr.send();
 				</script>
 			</div>
 		</div>
@@ -35,7 +33,7 @@
 		</div>
 		<div class="box foot" id="headad">
 			<script>
-				window.addEventListener("load",()=>{
+				window.addEventListener("scriptload",()=>{
 					loadIframe(document.getElementById("headad"),"/test/headad.txt")
 				})
 			</script>
@@ -45,7 +43,7 @@
 	<div class="list">
 		<div class="box foot" id="putad">
 			<script>
-				window.addEventListener("load",()=>{
+				window.addEventListener("scriptload",()=>{
 					loadIframe(document.getElementById("putad"),"/test/putad.txt")
 				})
 			</script>
@@ -56,7 +54,7 @@
 	<div style="margin:2rem auto;width: fit-content;">Copyright:u-haru@u-haru.com All Rights Reserved</div>
 </body>
 <script>
-	window.addEventListener("load",()=>{
+	window.addEventListener("scriptload",()=>{
 		const searchParams = new URLSearchParams(window.location.search);
 		const spl = location.pathname.split("/")
 		const bbs = spl[spl.length-2]
