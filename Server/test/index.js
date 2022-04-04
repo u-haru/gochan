@@ -37,6 +37,7 @@ function getdat(url,callback) {
 	let xhr = new XMLHttpRequest();
 	xhr.open('GET',url,true);
 	xhr.onload = function () {
+		if(xhr.status%400<100)return
 		callback(xhr.responseText)
 	};
 	xhr.send();
@@ -84,6 +85,7 @@ function loadIframe(elem,src){
 	let xhr = new XMLHttpRequest();
 	xhr.open('GET', src);
 	xhr.onload = function () {
+		if(xhr.status%400<100)return
 		let iframe = document.createElement('iframe');
 		iframe.setAttribute("scrolling","no")
 		iframe.setAttribute("style","width:100%;border:none;")
@@ -104,6 +106,7 @@ function loadSetting(url,callback){
 	let xhr = new XMLHttpRequest();
 	xhr.open('GET', url);
 	xhr.onload = function () {
+		if(xhr.status%400<100)return
 		let resps = xhr.responseText.split("\n")
 		let settings = {}
 		resps.forEach(line => {
