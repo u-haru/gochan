@@ -43,7 +43,7 @@ function getdat(url,callback) {
 	xhr.send();
 }
 function postarea(bbs,key) {
-	return `<div class="common">${key ? "書き込み欄" : "新規スレッド作成"}</div>
+	return `<div><div class="common">${key ? "書き込み欄" : "新規スレッド作成"}</div>
 			<div style="margin: 0.5em 2em; font-size: 0.75em;">
 				<form method="POST" action="/test/bbs.cgi" accept-charset="Shift-JIS">
 					<input type="submit" value="${key ? "書き込み" : "新規スレッド"}"><br>
@@ -57,7 +57,7 @@ function postarea(bbs,key) {
 					<input type="hidden" name="bbs" value="${bbs}">
 					${key ? `<input type="hidden" name="key" value="${key}">` : ""}
 				</form>
-			</div>`
+			</div></div>`
 }
 function loadsubs(url,callback){
 	let xhr = new XMLHttpRequest();
