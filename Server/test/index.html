@@ -50,7 +50,22 @@
 				})
 			</script>
 		</div>
-		<div class="box foot" id="writing_area"></div>
+		<div class="box foot" id="writing_area">
+			<div>
+				<div class="common">読み込み中</div>
+					<div style="margin: 0.5em 2em; font-size: 0.75em;">
+						<form method="POST" action="/test/bbs.cgi" accept-charset="Shift-JIS">
+							<input type="submit" value="読み込み中"><br>
+							<div>スレッドタイトル：<input type="text" name="subject" style="width: 24em;" disabled></div>
+							<div>
+								<div style="display:inline-block">名前：<input type="text" name="FROM" style="width: 16em;" disabled></div>
+								<div style="display:inline-block">E-mail：<input type="text" name="mail" style="width: 16em;" disabled></div>
+							</div>
+							<textarea style="width: 40em; height: 10.0em; word-wrap: break-word;" rows="4" cols="12" name="MESSAGE" disabled>読み込み中</textarea>
+						</form>
+					</div>
+				</div>
+			</div>
 		<b><a href="./" style="white-space: nowrap;">ホーム</a></b>
 	</div>
 	<div style="margin:2rem auto;width: fit-content;">Copyright:u-haru@u-haru.com All Rights Reserved</div>
@@ -102,7 +117,7 @@
 				})
 			})
 		}
-		writing_area.insertAdjacentHTML('beforeend', postarea(bbs,key))
+		writing_area.innerHTML=postarea(bbs,key)
 	})
 </script>
 <style>
