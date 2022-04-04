@@ -43,10 +43,12 @@
 	</div>
 	<div class="list" id="thread_list"></div>
 	<div class="list">
-		<div class="box foot" id="putad">
+		<div class="box foot disabled" id="putad">
 			<script>
 				window.addEventListener("scriptload",()=>{
-					loadIframe(document.getElementById("putad"),"/test/putad.txt")
+					loadIframe(document.getElementById("putad"),"/test/putad.txt",()=>{
+						document.getElementById("putad").classList.remove("disabled")
+					})
 				})
 			</script>
 		</div>
