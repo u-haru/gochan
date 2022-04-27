@@ -73,6 +73,12 @@
 	<div style="margin:2rem auto;width: fit-content;">Copyright:u-haru@u-haru.com All Rights Reserved</div>
 </body>
 <script>
+	if (document.documentMode && document.uniqueID){
+		document.getElementById("thread_list").innerHTML=`<dl class="box thread" id="1646584251"><dt class="title">InternetExplorerは非対応です!</dt>
+			<dt class="header">1<span class="name">サーバー</span></dt><dd class="res">新しいブラウザを使用してください。</dd></dl>`
+		document.getElementById("thread_catalog").remove()
+		document.getElementById("writing_area").remove()
+	}else
 	window.addEventListener("scriptload",()=>{
 		const searchParams = new URLSearchParams(window.location.search);
 		const spl = location.pathname.split("/")
