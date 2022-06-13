@@ -132,6 +132,9 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	list.Unlock()
 
 	res.From = strings.ReplaceAll(res.From, "★", "☆")
+	res.From = strings.Replace(res.From, "fusianasan", res.RemoteAddr.String(), 1)
+	log.Println(res.RemoteAddr.String())
+
 	pos := strings.Index(res.From, "#")
 	wf := false //管理者の書き込み
 	if pos != -1 {
