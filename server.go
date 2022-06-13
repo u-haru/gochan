@@ -48,6 +48,7 @@ type Server struct {
 
 type Res struct {
 	From, Mail, Message, Subject string
+	BBS, Key                     string
 	RemoteAddr                   net.IP
 	ID                           []byte
 	Date                         time.Time

@@ -115,7 +115,14 @@ func messageChecker(res *gochan.Res) (bool, string) {
 			Path:    th.Board().BBS(),
 			Expires: time.Now().Add(time.Hour * 24),
 		})
-		return false, "書き込んでもよろしいですか?\n書き込みに対し本サイトはいかなる責任も負いません。今後行われた書き込みに対しては、この規約に同意したものとみなします。\n書き込みを行う場合はページを再読み込みしてください。"
+		return false, `書き込んでもよろしいですか?<br><br>書き込みに対し本サイトはいかなる責任も負いません。今後行われた書き込みに対しては、この規約に同意したものとみなします。<br>
+<form method="POST" accept-charset="Shift-JIS">
+<input type="submit" value="書き込む"><br>
+<input type="hidden" name="FROM" value="` + res.From + `">
+<input type="hidden" name="mail" value="` + res.Mail + `">
+<input type="hidden" name="MESSAGE" value="` + res.Message + `">
+<input type="hidden" name="bbs" value="` + res.BBS + `">
+<input type="hidden" name="key" value="` + res.Key + `"></form>`
 	}
 
 	v, ok := list.messager[res.RemoteAddr.String()]

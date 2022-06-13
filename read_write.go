@@ -60,10 +60,9 @@ func getIPAdress(r *http.Request) net.IP {
 }
 
 func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同じ動きする
-	bbs := toUTF(r.PostFormValue("bbs"))
-	key := toUTF(r.PostFormValue("key"))
-
 	res := &Res{}
+	res.BBS = toUTF(r.PostFormValue("bbs"))
+	res.Key = toUTF(r.PostFormValue("key"))
 	res.Subject = strings.ReplaceAll(Escape.Replace(toUTF(r.PostFormValue("subject"))), "<br>", "")
 	res.From = strings.ReplaceAll(Escape.Replace(toUTF(r.PostFormValue("FROM"))), "<br>", "")
 	res.Mail = strings.ReplaceAll(Escape.Replace(toUTF(r.PostFormValue("mail"))), "<br>", "")
@@ -73,18 +72,18 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	res.Writer = w
 	res.RemoteAddr = getIPAdress(r)
 
-	board, ok := sv.boards[bbs]
+	board, ok := sv.boards[res.BBS]
 	if !ok {
 		dispError(w, "bbsが不正です!")
 		return
 	}
 	var th *Thread
 	if res.Subject != "" { //subjectがあれば新規スレ
-		key = fmt.Sprintf("%d", res.Date.Unix())
-		th = NewThread(key)
+		res.Key = fmt.Sprintf("%d", res.Date.Unix())
+		th = NewThread(res.Key)
 		th.lastmod = res.Date
 		th.Conf.SetParent(&board.Conf) //スレ立てに必要なため仮置
-		if _, ok := board.threads[key]; ok {
+		if _, ok := board.threads[res.Key]; ok {
 			dispError(w, "keyが不正です!")
 			return
 		}
@@ -95,7 +94,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		}
 		th.title = res.Subject
 	} else {
-		th, ok = board.threads[key]
+		th, ok = board.threads[res.Key]
 		if !ok {
 			dispError(w, "keyが不正です!")
 			return
@@ -112,7 +111,7 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 		return
 	}
 	if !th.Writable() {
-		dispError(w, "このスレッドは書き込みできる数を超えました。\n新しいスレッドを立ててください。")
+		dispError(w, "このスレッドは書き込みできる数を超えました。\n<br>新しいスレッドを立ててください。")
 		return
 	}
 
@@ -160,10 +159,10 @@ func (sv *Server) bbs(w http.ResponseWriter, r *http.Request) { //bbs.cgiと同�
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
-	link := sv.Baseurl + bbs + "/?key=" + key
-	if l := r.Header.Get("Referer"); l != "" && !strings.Contains(l, "/"+bbs+"/") {
-		link = l
-	}
+	link := sv.Baseurl + res.BBS + "/?key=" + res.Key
+	// if l := r.Header.Get("Referer"); l != "" && !strings.Contains(l, "/"+res.BBS+"/") {
+	// 	link = l
+	// }
 	fmt.Fprintf(w, written, link)
 	board.RefreshSubjects()
 }
@@ -240,7 +239,7 @@ func (sv *Server) setting(w http.ResponseWriter, r *http.Request, bbs string) { 
 func dispError(w http.ResponseWriter, stat string) {
 	w.Header().Set("Content-Type", "text/html; charset=Shift_JIS")
 	w.WriteHeader(400)
-	body := Escape.Replace(toSJIS(stat))
+	body := toSJIS(stat)
 	fmt.Fprint(w, `<html>
 	<head>
 	<title>ERROR!</title>
