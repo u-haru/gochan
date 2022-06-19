@@ -1,6 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -22,12 +26,15 @@ import (
 var (
 	Dir  = ""
 	Host = ""
+	rkey *rsa.PrivateKey
 )
 
 func main() {
 	flag.StringVar(&Dir, "d", "./Server", "-d [ServerDir]")
 	flag.StringVar(&Host, "h", "0.0.0.0:80", "-h [Host]")
 	flag.Parse()
+
+	rkey, _ = rsa.GenerateKey(rand.Reader, 1024)
 
 	Server := gochan.NewServer()
 	Server.Function.WriteChecker = messageChecker
@@ -108,14 +115,36 @@ func messageChecker(res *gochan.Res) (bool, string) {
 	// res.Message = strings.ReplaceAll(res.Message, "test", "テスト")
 	th := res.Thread()
 
-	if c, err := res.Req.Cookie("AcceptRule"); err != nil || c.Value != "true" {
+	var needauth = true
+	c, err := res.Req.Cookie("AcceptRule")
+	if err == nil {
+		mess, _ := base64.StdEncoding.DecodeString(c.Value)
+		decryptedBytes, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, rkey, mess, nil)
+		if err == nil && strings.Contains(string(decryptedBytes), "@gochan") {
+			needauth = false
+		}
+	}
+
+	if needauth {
+		encryptedBytes, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, &rkey.PublicKey, []byte("@gochan"), nil)
+		if err != nil {
+			log.Println(err)
+		}
+		mess := base64.StdEncoding.EncodeToString(encryptedBytes)
 		http.SetCookie(res.Writer, &http.Cookie{
 			Name:    "AcceptRule",
-			Value:   "true",
+			Value:   mess,
 			Path:    th.Board().BBS(),
 			Expires: time.Now().Add(time.Hour * 24),
 		})
+		list.Lock()
+		if list.messager == nil {
+			list.messager = make(map[string]time.Time)
+		}
+		list.messager[res.RemoteAddr.String()] = res.Date.Add(-time.Second * 2)
+		list.Unlock()
 		return false, `書き込んでもよろしいですか?<br><br>書き込みに対し本サイトはいかなる責任も負いません。今後行われた書き込みに対しては、この規約に同意したものとみなします。<br>
+書き込みは3秒後から有効になります。
 <form method="POST" accept-charset="Shift-JIS">
 <input type="submit" value="書き込む"><br>
 <input type="hidden" name="FROM" value="` + res.From + `">
