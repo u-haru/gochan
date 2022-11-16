@@ -193,6 +193,12 @@ func (sv *Server) ListenAndServe(host, dir string) error {
 func (sv *Server) Serve(ln net.Listener, dir string) error {
 	sv.init(dir)
 	sv.HandleFunc("/test/bbs.cgi", sv.bbs)
+	sv.HandleFunc("/test/read.cgi/", func(w http.ResponseWriter, r *http.Request) {
+		strs := strings.Split(r.URL.Path[1:], "/")
+		if len(strs) > 3 {
+			http.Redirect(w, r, sv.Baseurl+strs[2]+"?key="+strs[3], http.StatusFound)
+		}
+	})
 	sv.HandleFunc(sv.Baseurl, func(w http.ResponseWriter, r *http.Request) {
 		strs := strings.Split(r.URL.Path[1:], "/")
 		switch {
