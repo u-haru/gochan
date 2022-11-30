@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -155,6 +156,35 @@ func (abd *Board) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				stat.Status = "Failed"
 				stat.Reason = err.Error()
+			}
+		}
+	case strings.HasSuffix(r.URL.Path, "/symLink"):
+		{
+			if bd, ok := abd.Server.Boards()[bbs]; ok {
+				target := path.Join(abd.Server.Path(), "test", "index.html")
+				symlink := path.Join(bd.Path(), "index.html")
+				if gochan.Escape.Replace(r.PostFormValue("sym")) == "true" {
+					//シンボリックリンク作成
+					if relpath, err := filepath.Rel(bd.Path(), target); err == nil {
+						if err := os.Symlink(relpath, symlink); err != nil {
+							stat.Status = "error"
+							stat.Reason = err.Error()
+						} else {
+							stat.Status = "Success"
+						}
+					}
+				} else if gochan.Escape.Replace(r.PostFormValue("sym")) == "false" {
+					//シンボリックリンク削除
+					if err := os.Remove(symlink); err != nil {
+						stat.Status = "error"
+						stat.Reason = err.Error()
+					} else {
+						stat.Status = "Success"
+					}
+				}
+			} else {
+				stat.Status = "Failed"
+				stat.Reason = "No such thread"
 			}
 		}
 	case strings.HasSuffix(r.URL.Path, "/boardList"):

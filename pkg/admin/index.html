@@ -44,6 +44,7 @@
 					<div class="common">コンフィグ</div>
 					<table id="config_list">
 					</table>
+					<div>シンボリックリンク:<input type="button" value="作成" onclick="symlink(true)"><input type="button" value="削除" onclick="symlink(false)"></div>
 				</div>
 			</div>
 		</div>
@@ -56,6 +57,31 @@
 		const adminbaseurl = location.pathname
 		const conf_list = document.getElementById("config_list")
 		let bbstotitle = {}
+		let currentbbs = ""
+		let currentkey = ""
+		function symlink(s){
+			let formData = new FormData();
+			formData.append('bbs', currentbbs);
+			if(s==true){
+				formData.append('sym', "true");
+				fetch(adminbaseurl+"symLink",{method:"POST",body:formData}).then(res=>res.json()).then(res=>{
+					if(res.status=="Success"){
+						alert("シンボリックリンクを作成しました")
+					}else{
+						alert("シンボリックリンクの作成に失敗しました:"+res.reason)
+					}
+				})
+			}else{
+				formData.append('sym', "false");
+				fetch(adminbaseurl+"symLink",{method:"POST",body:formData}).then(res=>res.json()).then(res=>{
+					if(res.status=="Success"){
+						alert("シンボリックリンクを削除しました")
+					}else{
+						alert("シンボリックリンクの削除に失敗しました:"+res.reason)
+					}
+				})
+			}
+		}
 		function parsedattoadmin(dl,bbs,key,dat,shownum){
 			dl.innerHTML = parsedat(key,dat,shownum)
 
@@ -80,8 +106,11 @@
 				})
 				e.insertAdjacentElement("beforeend",rmbtn)
 			})
+			currentbbs = bbs
+			currentkey = key
 		}
 		function loadboard(baseurl, bbs) {
+			currentbbs = bbs
 			if (searchParams.has("key")) {
 				let key = searchParams.get("key")
 				// getdat2(baseurl, bbs, searchParams.get("key") + ".dat")
