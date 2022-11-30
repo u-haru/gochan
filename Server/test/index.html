@@ -20,7 +20,11 @@
 					let xhr = new XMLHttpRequest();
 					xhr.open('GET', "./head.txt");
 					xhr.onload = function () {
-						document.getElementById("head").innerHTML = xhr.responseText
+						if(xhr.status < 400){
+							document.getElementById("head").innerHTML = xhr.responseText;
+						}else{
+							document.getElementById("head").parentElement.classList.add("disabled")
+						}
 					}
 					xhr.overrideMimeType('text/html; charset=Shift_JIS')
 					xhr.send();
